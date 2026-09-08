@@ -196,18 +196,18 @@ Positive gap means estimated unmet demand; negative gap means estimated surplus.
 
 **Known limitation:** The RAG baseline is document-only; it does not yet resolve analytics context.
 
-## Sprint 2 — Dashboard, Forecasting, Demand Benchmark, and Opportunity — COMPLETE WITH HARDENING FOLLOW-UP
+## Sprint 2 — Dashboard, Forecasting, Demand Benchmark, and Opportunity
 
 **Modules:** M03, M04, M09 backend, part of M10
 
 **Delivered:**
 
-- [x] CALABARZON dashboard using actual outlook API responses
-- [x] Forecasting controls and demand/supply/price cards
-- [x] Observed, forecast, proxy, verdict, confidence, source, frequency, and resolution displays
-- [x] Configured peer-relative opportunity scoring
-- [x] Optional rice FIES/XGBoost benchmark and MT supply-gap logic
-- [x] Cached model-evidence extraction and `/forecast/evidence`
+- [] CALABARZON dashboard using actual outlook API responses
+- [] Forecasting controls and demand/supply/price cards
+- [] Observed, forecast, proxy, verdict, confidence, source, frequency, and resolution displays
+- [] Configured peer-relative opportunity scoring
+- [] Optional rice FIES/XGBoost benchmark and MT supply-gap logic
+- [] Cached model-evidence extraction and `/forecast/evidence`
 
 **Follow-up acceptance:** Sprint 3 must make demand provenance and the rice fallback mode explicit before GIS or chatbot reuse the values.
 

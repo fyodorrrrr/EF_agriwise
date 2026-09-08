@@ -2,6 +2,8 @@
 
 This package contains the FIES-LFS / XGBoost demand-prediction implementation. It is organized with executable code in `ml/demand/pipeline/`, trained model artifacts in `ml/demand/artifacts/`, and all derived inputs, validation products, and outputs in `data/processed/demand/`.
 
+> **Not to be confused with `ml/artifacts/`.** That is a separate, unrelated artifact store -- lightweight per-commodity `joblib` bundles consumed by `ml/forecasting/artifact_registry.py` for `GET /forecast/outlook` (demand + supply + price, all 4 commodities). `ml/demand/artifacts/` here holds only the household-level FIES-LFS XGBoost "Model B" boosters (`BREAD`/`VEG` targets) used by this package's own `pipeline/inference.py`. See `ml/artifacts/README.md` for the full comparison table.
+
 ## Repository locations
 
 | Content | Location |

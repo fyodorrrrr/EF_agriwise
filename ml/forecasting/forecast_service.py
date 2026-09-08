@@ -42,6 +42,7 @@ class OutlookComponentPayload:
     source: str | None = None
     data_as_of: str | None = None
     limitations: list[str] = field(default_factory=list)
+    metrics: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -92,15 +93,18 @@ class ForecastService:
         for component in COMPONENTS:
             artifact = self._registry.get(commodity, component)
             if artifact is None:
-                # Only reachable path today: the registry is always empty
-                # until real artifacts are trained and dropped under
-                # ml/artifacts/.
                 components[component] = _insufficient_data_component()
                 continue
-            # TODO(Sprint 2+): produce real forecast values from `artifact`
-            # (observed history + predicted future quarters/months) once
-            # trained artifacts exist. Until then this branch is unreached.
-            components[component] = _insufficient_data_component()
+            # Reflects the artifact's own verdict/metrics/limitations. Forward-
+            # looking value/date generation (predicted future quarters/months)
+            # is a separate, not-yet-designed piece of work: `values`,
+            # `unit`, `frequency`, `confidence`, `source`, and `data_as_of`
+            # stay None until that lands.
+            components[component] = OutlookComponentPayload(
+                verdict=artifact.verdict,
+                metrics=artifact.metrics,
+                limitations=artifact.limitations,
+            )
 
         # Missing any critical demand/supply/price input blocks opportunity
         # scoring entirely — with an empty registry every input is missing.

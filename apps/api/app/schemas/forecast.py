@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 Commodity = Literal["Rice", "Tomato", "Red Onion", "Banana"]
 Province = Literal["Batangas", "Cavite", "Laguna", "Quezon", "Rizal"]
-Verdict = Literal["PASS", "CAUTION", "INSUFFICIENT_DATA", "USABLE_PROXY"]
+Verdict = Literal["PASS", "CAUTION", "INSUFFICIENT_DATA", "USABLE_PROXY", "INDICATIVE_PROXY"]
 Frequency = Literal["monthly", "quarterly"]
 Confidence = Literal["HIGH", "MODERATE", "NONE"]
 
@@ -45,6 +45,7 @@ class OutlookComponent(BaseModel):
     source: str | None = None
     data_as_of: str | None = None
     limitations: list[str] = Field(default_factory=list)
+    metrics: dict = Field(default_factory=dict)
 
 
 class OpportunityComponent(BaseModel):
