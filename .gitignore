@@ -22,6 +22,11 @@ next-env.d.ts
 data/processed/*
 !data/processed/.gitkeep
 
+# Local demand-prediction source and derived data. Model artifacts live in
+# ml/demand/artifacts/ and remain versioned; datasets are deliberately local.
+data/raw/PHL-PSA-FIES-LFS/
+data/raw/lfsFiles/
+
 # OS / editor
 .DS_Store
 Thumbs.db
