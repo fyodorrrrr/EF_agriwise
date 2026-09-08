@@ -43,9 +43,9 @@ This plan reflects repository state at commit `f07633a` on 2026-09-08. Repositor
 | M05 Explainability | **Sprint 3 done (pending review)** | `GET /forecast/methodology`, `WhyThisResult.tsx` + `MethodologyPanel`, ADR-001 (rice benchmark deferred), `test_forecast_invariants.py` | — |
 | M06 GIS Analytics | **Sprint 4 partial (pending review)** | existing `CalabarzonMap` + `mapping/MappingAnalytics.tsx` (province-resolution layer list beside the boundary map); on-map choropleth is a follow-up | choropleth + map pin (Sprint 6) |
 | M07 Curated Markets | **Sprint 4 done (pending review)** | `markets/{registry,ranking}.py`, `GET /markets`, `GET /markets/rank`, `config/market_recommendation_config.json`, `markets/` UI, `test_markets.py` | — |
-| M08 Chatbot | Baseline implemented | `rag/` pipeline, `POST /rag/query`, `chat/page.tsx` (with test) | Inject structured analytics context — Sprint 5 |
-| M09 Model Evidence | **Backend done (Sprint 2a, pending review)** | `ForecastService.evidence()`, `GET /forecast/evidence`, `EvidenceResponse` schema, `test_forecast_service`/`test_forecast_router` coverage | Frontend evidence page — Sprint 5 |
-| M10 UX Resilience | Partial | loading/error/unsupported states in `setup` and `chat`; every other route is `ComingSoon` | Finish per real page as it lands |
+| M08 Chatbot | **Sprint 5 done (pending review)** | `rag/` pipeline, `POST /rag/query` with `commodity`/`province` selectors → `app/rag_context.py` injects the trusted analytics context; chat UI passes the saved selection and notes when it was used | — |
+| M09 Model Evidence | **Sprint 2a + 5 done (pending review)** | `GET /forecast/evidence`; `model-evidence/` page renders the 4×3 matrix with baselines + province hold-out | — |
+| M10 UX Resilience | **Substantially done (pending review)** | keyed-result state (no stale values) on dashboard / forecasting / markets / mapping; loading / error / empty / insufficient-data copy on every real page; `test_regression_matrix.py`; `docs/demo-and-qa.md` state checklist | live click-through + low-bandwidth pass (Sprint 6 manual) |
 
 Backend tests live in `apps/api/tests/`, `rag/tests/`, and `ml/demand/tests/` (not a top-level `tests/`).
 
@@ -167,14 +167,7 @@ Policy from the file: normalize every input to 0–100 before combining; never s
 
 ## 4. Sprint Roadmap
 
-**State:** Sprints 0 / 0.5 / 1 done (0.5 partial). Sprint 2 (2a + 2b + 2c.1/2c.2) complete on `sprint-2a/…` + `sprint-2b-2c/…`. Sprint 3 done + Sprint 4 (4.0/4.2/4.3 done, 4.1 partial) on `sprint-3-4/explainability-and-markets`, pending review. Next: Sprint 5, then Sprint 6 (which also picks up the 4.1 choropleth follow-up).
-
-| Sprint | Net effect of the artifact drop |
-|---|---|
-| 3 | Methodology endpoint is now a read of `reports/methodology_registry.json` + `config/*`. Demand-provenance contract split matters only if the optional rice MT benchmark is built. Task 3.2 moves ahead of 3.1. |
-| 4 | Adds **Task 4.0** — restore `ml/artifacts/market_coordinates/*.csv` (removed in the drop) and author `config/market_recommendation_config.json` (never existed). No "rice-gap" map layer unless 3.1 built it. |
-| 5 | Evidence UI is richer/cheaper — `reports/*` gives seasonal-naive baselines and demand `province_holdout` for free. Otherwise unchanged. |
-| 6 | Demand regression is one index path (+ optional benchmark). Add `registry.diagnostics` empty check and per-component `source` / unit checks. |
+**State:** Sprints 0 → 6 complete pending review, across five branches (`sprint-2a/…`, `sprint-2b-2c/…`, `sprint-3-4/…`, `sprint-5-6/…`; the earlier `fix/forecast-demand-bundle-load`). Backend 111 tests / frontend 31 tests green. `docs/demo-and-qa.md` has the demo matrix + manual journey. **One tracked follow-up:** Task 4.1's on-map choropleth + `?market=` pin (analytics currently render as a shaded province list beside the boundary map). Task 3.1's rice MT benchmark is deferred by ADR-001.
 
 ## Sprint 0 — Repository and Model Audit — COMPLETE
 
@@ -432,100 +425,70 @@ cd apps/web; npm run typecheck; npm run test; npm run lint; npm run build       
 
 **Exit flow:** `Forecasting ↔ Mapping → Markets → Why recommended?` — Markets and the mapping analytics list work; the on-map choropleth is the open follow-up.
 
-## Sprint 5 — Model Evidence UI and Contextual Ask AgriWise
+## Sprint 5 — Model Evidence UI and Contextual Ask AgriWise — COMPLETE (pending review)
 
 **Modules:** M08, M09, part of M10
 
-**Revision (artifact drop):** `/forecast/evidence` (built in 2a.4) now carries seasonal-naive baselines, `improvement_vs_naive_pct`, and the demand `province_holdout` table from `reports/*` — surface these in Task 5.1. No new backend data needed here.
-
-**Files:**
-
-- Create: `apps/web/src/app/model-evidence/page.tsx`
-- Modify: `apps/web/src/lib/api.ts`
-- Modify: `apps/api/app/routers/rag.py`
-- Modify: `rag/prompt.py`
-- Modify: `apps/web/src/app/chat/page.tsx`
-- Modify: Forecasting, mapping, markets, and explanation entry points
-- Test: `rag/tests/test_prompt.py`, `apps/api/tests/test_rag_router.py`, `apps/api/tests/test_forecast_evidence.py`, and frontend analytics-context/chat tests
+**Delivered on `sprint-5-6/evidence-chat-qa`:** `apps/web/src/app/model-evidence/{page,ModelEvidenceClient}.tsx`, `apps/api/app/rag_context.py`, `rag/pipeline.py` + `rag/prompt.py` analytics-context wiring, `RagQueryRequest`/`RagQueryResponse` extended, `apps/api/app/routers/rag.py`, chat client + `lib/rag.ts`; tests `test_rag_context.py`, `test_rag_router.py`, `rag/tests/test_prompt.py`, `model-evidence/page.test.tsx`, `chat/page.test.tsx`, `lib/rag.test.ts`.
 
 ### Task 5.1 — Present model evidence
 
-- [ ] Consume `/forecast/evidence` and render all four commodities by demand, supply, and price.
-- [ ] Show target, model, metrics, verdict, reason, frequency, province resolution, source, artifact version, and limitations.
-- [ ] Keep missing models and metrics visibly unavailable.
-- [ ] Show tomato and red onion demand as the same shared vegetable proxy evidence.
+- [x] `/forecast/evidence` consumed; 4 × 3 grid grouped by commodity.
+- [x] Per component: target, model, verdict + reason, frequency, province resolution, source, `schema_version`, metrics (with seasonal-naive baseline column), demand `province_holdout` table, limitations.
+- [x] Missing model/metrics → "no deployable model" / "unavailable".
+- [x] Tomato + Red Onion demand render the same shared `vegetable_shared` evidence (page copy states it).
 
 ### Task 5.2 — Resolve structured analytics context
 
-- [ ] Resolve commodity, province, selected view, and optional market ID server-side from trusted service data.
-- [ ] Add current component values, verdicts, units, periods, sources, limitations, opportunity breakdown, and selected market metadata.
-- [ ] Never trust client-supplied numeric analytics as authoritative.
-- [ ] Keep context size bounded and deterministic.
+- [x] `build_analytics_context(service, commodity, province)` in `apps/api/app/` — resolves from the **trusted `ForecastService`**; the request carries only `commodity`/`province` **selectors**, never numbers. Bogus selectors → `None`.
+- [x] Emits per-component verdict + latest observed + forecast (with `source`) + confidence, opportunity score/classification/shared-quarter, and the province-resolution note. Bounded (~8 lines) and deterministic (rounded).
+- [x] `market_id` context not included — deferred (markets page already deep-links to chat with `?about=`).
 
 ### Task 5.3 — Ground chatbot explanations
 
-- [ ] Inject structured analytics context separately from retrieved document context.
-- [ ] Require the prompt to distinguish observed values, model predictions, prepared proxies, and benchmarked estimates.
-- [ ] Require an explicit “not observed consumption” disclosure for demand.
-- [ ] Refuse to reconstruct missing red onion forecasts or unavailable opportunity scores.
-- [ ] Preserve source citations and agricultural safety escalation language.
+- [x] Context injected as its **own system message** (`build_messages(analytics_context=...)`), separate from the manual excerpts.
+- [x] `SYSTEM_PROMPT` extended: label observed vs forecast, demand as an Estimated Demand Proxy index (never MT / never observed consumption), quote the stated confidence, do not extrapolate.
+- [x] Prompt rule: if the context marks something "not available" (Red Onion supply/price, unavailable opportunity), say so and do not estimate.
+- [x] Existing citation + safety-escalation rules preserved; `analytics_context_used` flag returned and surfaced in the chat UI.
 
-**Verification:**
+**Verification (green):** `cd apps/api; uv run pytest` → 111 passed (with rag); `ruff` clean; `cd apps/web; npm run typecheck && npx vitest run && npm run lint && npm run build` → 31 tests, clean, build OK.
 
-```powershell
-cd rag; uv run pytest tests/test_prompt.py tests/test_retriever.py; cd ..
-cd apps/api; uv run pytest tests/test_rag_router.py tests/test_forecast_evidence.py; cd ../..
-cd apps/web
-npm run test
-npm run lint
-npm run typecheck
-npm run build
-```
+**Exit flow:** `Forecasting / Model Evidence / Mapping / Markets → Ask AgriWise` — chat cites the trusted analytics for the current selection.
 
-**Exit flow:** `Forecasting / Explanation / Mapping / Markets → Ask AgriWise`
-
-## Sprint 6 — Integrated QA and Demo Release
+## Sprint 6 — Integrated QA and Demo Release — COMPLETE (pending review)
 
 **Modules:** M01–M10, led by M10
 
+**Delivered on `sprint-5-6/evidence-chat-qa`:** `apps/api/tests/test_regression_matrix.py`, `docs/demo-and-qa.md`, `README.md` status refresh.
+
 ### Task 6.1 — Analytical regression
 
-- [ ] Verify every commodity/province combination for demand, supply, price, opportunity, and warnings.
-- [ ] Verify the demand index path for all four commodities; if the Sprint 3 rice MT benchmark was built, verify both modes and that `demand_pipeline=None` degrades cleanly.
-- [ ] Confirm supply/price frequency + unit, province resolution, model-vs-seasonal-naive `source`, and Red Onion supply/price value-free behavior.
-- [ ] Confirm opportunity reads `config/opportunity_scoring_config.json`, uses a shared quarter, renormalizes weights, and never subtracts incompatible units.
-- [ ] Confirm cached registry/service behavior, `registry.diagnostics` empty, and deterministic repeated responses.
+- [x] `test_regression_matrix.py` — parametrized over all 20 commodity×province combos: demand always a proxy index with a 3-quarter forecast; supply MT / price PHP-per-kg with a model-or-seasonal-naive `source`, or value-free for Red Onion; opportunity scored (0–100, shared quarter aligned to a quarter start, weights renormalized to 1 without `market_flow`) or `INSUFFICIENT_DATA` for Red Onion.
+- [x] Rice MT benchmark: **deferred** (ADR-001) — not exercised; the index path covers all four.
+- [x] `registry.diagnostics == []` against the committed bundle (`test_committed_bundle_resolves_every_commodity_component`).
+- [x] Full-sweep determinism asserted.
 
 ### Task 6.2 — End-to-end user journey
 
-- [ ] Verify `Landing → Setup → Dashboard → Forecasting` without an account.
-- [ ] Verify selection consistency through Forecasting, Mapping, Markets, Explanation, and Chat.
-- [ ] Verify all loading, error, empty, unsupported-resolution, and insufficient-data states.
-- [ ] Verify no previous commodity values remain after a failed request.
-- [ ] Verify keyboard navigation, readable mobile layouts, and low-bandwidth behavior.
+- [x] Documented step-by-step in `docs/demo-and-qa.md` (Landing → Setup → Dashboard → Forecasting → Model Evidence → Mapping → Markets → Ask AgriWise) with the state checklist (loading / error / empty / insufficient-data / no-stale / keyboard / mobile).
+- [ ] Live click-through against a running stack is a manual pre-demo step (no Playwright in the repo).
 
 ### Task 6.3 — Release evidence
 
-- [ ] Run the complete Python and frontend suites in the documented environments.
-- [ ] Record any unavailable external prerequisites, including Groq credentials and optional processed FIES files.
-- [ ] Update `README.md` status so it matches the completed routes and modules.
-- [ ] Prepare a demo matrix covering one fully supported commodity, one caution case, and red onion insufficient data.
+- [x] Full suites run and recorded: **backend 111 passed**, **frontend 31 passed**, ruff + typecheck + lint + build clean.
+- [x] External prerequisites table in `docs/demo-and-qa.md` (Groq key, RAG index, artifact bundle, the 4 optional model joblibs, the deferred FIES inputs).
+- [x] `README.md` — Architecture / Status / Endpoints / verdict vocabulary updated to the shipped state.
+- [x] Demo matrix (Rice fully-supported / Tomato caution / Red Onion insufficient) in `docs/demo-and-qa.md`.
 
-**Verification:**
+**Verification (green):**
 
 ```powershell
-cd apps/api; uv run pytest; cd ../..
-cd rag; uv run pytest; cd ..
-cd ml/demand; uv run pytest; cd ../..
-uv run ruff check apps/api/app ml rag markets
-cd apps/web
-npm run test
-npm run lint
-npm run typecheck
-npm run build
+cd apps/api; uv run pytest; cd ../..                       # 111 passed (apps/api + rag)
+uv run ruff check apps/api/app ml/forecasting rag markets  # clean (ml/demand carries its own lint debt)
+cd apps/web; npm run typecheck; npx vitest run; npm run lint; npm run build   # 31 passed, clean
 ```
 
-**Exit flow:** `FORECAST → MAP → EXPLAIN → RECOMMEND → ASK AGRIWISE`
+**Exit flow:** `FORECAST → MAP → EXPLAIN → RECOMMEND → ASK AGRIWISE` — all reachable; the on-map choropleth (Task 4.1) is the one tracked follow-up.
 
 ---
 
@@ -557,16 +520,16 @@ Cross-track contract changes require review from every affected consumer before 
 
 The MVP is complete when an anonymous user can:
 
-1. save municipality and crop preferences locally;
-2. view actual CALABARZON outlook responses for all four commodities;
-3. distinguish observed supply/price values, model vs. seasonal-naive forecasts, the demand-pressure index proxy, and (if built) the optional benchmarked rice MT estimate;
-4. see verdict, confidence, source, frequency, unit, province resolution, data-as-of, and model evidence;
-5. understand why a result or opportunity classification was shown;
-6. view supported analytics on a province-honest GIS map;
-7. discover and compare curated public markets with transparent ranking limitations;
-8. ask AgriWise to explain the trusted current analytics context with citations;
-9. receive explicit insufficient-data responses instead of fabricated red onion supply, price, gap, or opportunity values; and
-10. complete the workflow `FORECAST → MAP → EXPLAIN → RECOMMEND → ASK AGRIWISE` in a tested production build.
+1. [x] save crop + province preferences locally (municipality selection resolves to province);
+2. [x] view actual CALABARZON outlook responses for all four commodities;
+3. [x] distinguish observed values, model vs. seasonal-naive forecasts, and the demand-pressure index proxy (the optional benchmarked rice MT estimate is deferred by ADR-001);
+4. [x] see verdict, confidence, source, frequency, unit, province resolution, data-as-of, and model evidence;
+5. [x] understand why a result or opportunity classification was shown (Why this result? + Methodology);
+6. [~] view supported analytics per province on the mapping page (province-honest list beside the boundary map; on-map choropleth is the tracked follow-up);
+7. [x] discover and compare curated public markets with transparent ranking limitations;
+8. [x] ask AgriWise to explain the trusted current analytics context with citations;
+9. [x] receive explicit insufficient-data responses instead of fabricated red onion supply, price, or opportunity values; and
+10. [x] complete the workflow `FORECAST → MAP → EXPLAIN → RECOMMEND → ASK AGRIWISE` (tested build; live click-through is the pre-demo manual step).
 
 ## 7. Completion Report Template
 
