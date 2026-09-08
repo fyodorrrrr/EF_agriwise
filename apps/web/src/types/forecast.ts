@@ -87,3 +87,13 @@ export interface EvidenceComponent {
 export interface EvidenceResponse {
   components: EvidenceComponent[];
 }
+
+export interface MethodologyResponse {
+  schema_version: string | null;
+  demand: Record<string, unknown>;
+  supply: Record<string, unknown>;
+  price: Record<string, unknown>;
+  opportunity: Record<string, unknown>;
+  commodity_flow: Record<string, unknown>;
+  disclaimers: string[];
+}

@@ -5,11 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { ComponentCard } from "@/components/forecast/ComponentCard";
+import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { COMMODITIES, PROVINCES } from "@/lib/domain";
-import { getOutlook } from "@/lib/forecast";
+import { getMethodology, getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
-import type { Commodity, OutlookResponse, Province } from "@/types/forecast";
+import type {
+  Commodity,
+  MethodologyResponse,
+  OutlookResponse,
+  Province,
+} from "@/types/forecast";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -53,6 +59,17 @@ export function ForecastingClient() {
         ? "ready"
         : "loading";
   const outlook = result?.key === key ? result.outlook : null;
+
+  const [methodology, setMethodology] = useState<MethodologyResponse | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getMethodology()
+      .then((m) => !cancelled && setMethodology(m))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!isHydrated) return null;
 
@@ -121,18 +138,86 @@ export function ForecastingClient() {
         <>
           <p className="text-xs text-muted">{outlook.resolution_note}</p>
           <div className="grid gap-3 md:grid-cols-3">
-            <ComponentCard kind="demand" component={outlook.demand} detailed />
-            <ComponentCard kind="supply" component={outlook.supply} detailed />
-            <ComponentCard kind="price" component={outlook.price} detailed />
+            {(["demand", "supply", "price"] as const).map((kind) => (
+              <div key={kind} className="flex flex-col gap-2">
+                <ComponentCard kind={kind} component={outlook[kind]} detailed />
+                <WhyThisResult
+                  kind={kind}
+                  component={outlook[kind]}
+                  disclaimer={disclaimerFor(kind, methodology)}
+                />
+              </div>
+            ))}
           </div>
-          <OpportunityCard outlook={outlook} />
+          <OpportunityCard outlook={outlook} methodology={methodology} />
+          {methodology && <MethodologyPanel methodology={methodology} />}
         </>
       )}
     </div>
   );
 }
 
-function OpportunityCard({ outlook }: { outlook: OutlookResponse }) {
+function disclaimerFor(
+  kind: "demand" | "supply" | "price" | "opportunity",
+  methodology: MethodologyResponse | null,
+): string {
+  const list = methodology?.disclaimers ?? [];
+  if (kind === "demand") {
+    return (
+      list.find((d) => d.includes("Estimated Demand Proxy")) ??
+      "Estimated Demand Proxy is a FIES expenditure-category index, not observed consumption."
+    );
+  }
+  if (kind === "opportunity") {
+    return (
+      list.find((d) => d.includes("peer-relative")) ??
+      "Opportunity is a peer-relative decision-support score, not a physical supply gap."
+    );
+  }
+  return (
+    list.find((d) => d.includes("seasonal-naive")) ??
+    "Forecasts use the model behind the verdict, or a seasonal-naive fallback shown in the source."
+  );
+}
+
+function MethodologyPanel({ methodology }: { methodology: MethodologyResponse }) {
+  return (
+    <details className="card text-xs">
+      <summary className="cursor-pointer card-kicker">Methodology</summary>
+      <dl className="mt-2 flex flex-col gap-1">
+        <div>
+          <dt className="text-muted">Supply</dt>
+          <dd>
+            {String(methodology.supply.target ?? "—")} · {String(methodology.supply.frequency ?? "")}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted">Price</dt>
+          <dd>
+            {String(methodology.price.target ?? "—")} · {String(methodology.price.frequency ?? "")}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted">Demand</dt>
+          <dd>{String(methodology.demand.temporal_proxy ?? "FIES expenditure-category proxy")}</dd>
+        </div>
+        <ul className="list-disc pl-4 pt-1 text-muted">
+          {methodology.disclaimers.map((d) => (
+            <li key={d}>{d}</li>
+          ))}
+        </ul>
+      </dl>
+    </details>
+  );
+}
+
+function OpportunityCard({
+  outlook,
+  methodology,
+}: {
+  outlook: OutlookResponse;
+  methodology: MethodologyResponse | null;
+}) {
   const opp = outlook.opportunity;
 
   if (opp.verdict === "INSUFFICIENT_DATA") {
@@ -193,6 +278,12 @@ function OpportunityCard({ outlook }: { outlook: OutlookResponse }) {
           ))}
         </tbody>
       </table>
+
+      <WhyThisResult
+        kind="opportunity"
+        component={opp}
+        disclaimer={disclaimerFor("opportunity", methodology)}
+      />
     </div>
   );
 }

@@ -93,3 +93,13 @@ class EvidenceComponent(BaseModel):
 
 class EvidenceResponse(BaseModel):
     components: list[EvidenceComponent]
+
+
+class MethodologyResponse(BaseModel):
+    schema_version: str | None = None
+    demand: dict = Field(default_factory=dict)
+    supply: dict = Field(default_factory=dict)
+    price: dict = Field(default_factory=dict)
+    opportunity: dict = Field(default_factory=dict)  # opportunity_scoring_config.json
+    commodity_flow: dict = Field(default_factory=dict)
+    disclaimers: list[str] = Field(default_factory=list)
