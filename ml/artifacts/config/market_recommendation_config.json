@@ -1,0 +1,35 @@
+{
+  "schema_version": "3.2",
+  "components": {
+    "proximity": { "weight": 0.4, "direction": "closer_better" },
+    "market_size_proxy": { "weight": 0.25, "direction": "higher_better" },
+    "data_reliability": { "weight": 0.2, "direction": "higher_better" },
+    "commodity_analytics_support": { "weight": 0.15, "direction": "higher_better" }
+  },
+  "policy": [
+    "Straight-line (haversine) distance from the province centroid is not travel time or road distance.",
+    "market_type is a coarse size proxy, not measured buyer demand or throughput.",
+    "coordinate_confidence LOW / NEEDS_VERIFICATION markets keep their approximate point; no coordinates are fabricated.",
+    "Weights are transparent configuration, not learned ground truth."
+  ],
+  "market_size_proxy_keywords": {
+    "bagsakan": 1.0,
+    "trading": 0.95,
+    "auction": 0.9,
+    "wholesale": 0.95,
+    "public market": 0.85,
+    "wet market": 0.75,
+    "satellite": 0.5,
+    "talipapa": 0.4,
+    "flea": 0.35,
+    "mini": 0.35,
+    "default": 0.55
+  },
+  "coordinate_confidence_score": {
+    "HIGH": 1.0,
+    "MEDIUM": 0.6,
+    "LOW": 0.35,
+    "NEEDS_VERIFICATION": 0.25,
+    "default": 0.25
+  }
+}

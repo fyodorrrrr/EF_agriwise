@@ -1,0 +1,161 @@
+"""Curated public-market directory.
+
+Loads ``ml/artifacts/market_coordinates/*.csv`` once. Records with a missing or
+out-of-range coordinate are dropped (recorded in ``diagnostics``); approximate
+coordinates are kept as-is — nothing is fabricated.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import pandas as pd
+
+logger = logging.getLogger("agriwise.markets")
+
+# CALABARZON bounding box (generous) — a sanity filter, not a precise clip.
+_LAT_RANGE = (13.0, 15.2)
+_LON_RANGE = (120.0, 122.3)
+_PROVINCES = ("Batangas", "Cavite", "Laguna", "Quezon", "Rizal")
+
+_MARKETS_CSV = "CALABARZON_market_coordinates.csv"
+_CENTROIDS_CSV = "municipality_centroids.csv"
+_CONFIG_REL = Path("config") / "market_recommendation_config.json"
+
+
+@dataclass(frozen=True)
+class MarketRecord:
+    market_id: str
+    market_name: str
+    municipality: str
+    province: str
+    latitude: float
+    longitude: float
+    market_type: str | None
+    coordinate_confidence: str
+    source_url: str | None
+    notes: str | None
+
+
+@dataclass(frozen=True)
+class MarketRegistry:
+    markets: tuple[MarketRecord, ...]
+    config: dict
+    diagnostics: tuple[str, ...] = field(default_factory=tuple)
+    _centroids: dict[str, tuple[float, float]] = field(default_factory=dict)
+
+    @classmethod
+    def load(cls, artifacts_dir: Path) -> MarketRegistry:
+        coords_dir = artifacts_dir / "market_coordinates"
+        diagnostics: list[str] = []
+        config = _read_json(artifacts_dir / _CONFIG_REL, diagnostics)
+
+        markets = _load_markets(coords_dir / _MARKETS_CSV, diagnostics)
+        centroids = _load_centroids(coords_dir / _CENTROIDS_CSV, diagnostics)
+
+        return cls(
+            markets=tuple(markets),
+            config=config,
+            diagnostics=tuple(diagnostics),
+            _centroids=centroids,
+        )
+
+    def for_province(self, province: str) -> list[MarketRecord]:
+        return [m for m in self.markets if m.province == province]
+
+    def province_centroid(self, province: str) -> tuple[float, float] | None:
+        points = [
+            self._centroids[key]
+            for key in self._centroids
+            if key.startswith(f"{province}|")
+        ]
+        if not points:
+            # fall back to the mean of the province's own market coordinates
+            pts = [(m.latitude, m.longitude) for m in self.for_province(province)]
+            points = pts
+        if not points:
+            return None
+        return (
+            sum(p[0] for p in points) / len(points),
+            sum(p[1] for p in points) / len(points),
+        )
+
+
+def _read_json(path: Path, diagnostics: list[str]) -> dict:
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        diagnostics.append(f"config: {path.name} missing")
+        return {}
+    except (OSError, ValueError):
+        diagnostics.append(f"config: {path.name} unreadable")
+        return {}
+
+
+def _load_markets(path: Path, diagnostics: list[str]) -> list[MarketRecord]:
+    if not path.is_file():
+        diagnostics.append(f"{path.name} missing; market directory is empty")
+        return []
+    # The file mixes a UTF-8 BOM with cp1252 content (e.g. "Biñan"); latin-1
+    # never fails, then strip the BOM artefact off the first column name.
+    frame = pd.read_csv(path, encoding="latin-1", dtype=str).fillna("")
+    frame.columns = [c.lstrip("﻿ï»¿") for c in frame.columns]
+
+    records: list[MarketRecord] = []
+    seen: set[str] = set()
+    for _, row in frame.iterrows():
+        mid = row.get("market_id", "").strip()
+        province = row.get("province", "").strip()
+        if not mid or mid in seen:
+            diagnostics.append(f"market row skipped: missing/duplicate id {mid!r}")
+            continue
+        if province not in _PROVINCES:
+            diagnostics.append(f"{mid}: province {province!r} not in CALABARZON")
+            continue
+        try:
+            lat = float(row["latitude"])
+            lon = float(row["longitude"])
+        except (KeyError, ValueError):
+            diagnostics.append(f"{mid}: non-numeric coordinates, skipped")
+            continue
+        if not (_LAT_RANGE[0] <= lat <= _LAT_RANGE[1] and _LON_RANGE[0] <= lon <= _LON_RANGE[1]):
+            diagnostics.append(f"{mid}: coordinates outside CALABARZON, skipped")
+            continue
+
+        seen.add(mid)
+        confidence = (row.get("coordinate_confidence", "").strip() or "NEEDS_VERIFICATION").upper()
+        records.append(
+            MarketRecord(
+                market_id=mid,
+                market_name=row.get("market_name", "").strip() or mid,
+                municipality=row.get("municipality_city", "").strip(),
+                province=province,
+                latitude=lat,
+                longitude=lon,
+                market_type=row.get("market_type", "").strip() or None,
+                coordinate_confidence=confidence,
+                source_url=row.get("source_url", "").strip() or None,
+                notes=row.get("notes", "").strip() or None,
+            )
+        )
+    return records
+
+
+def _load_centroids(path: Path, diagnostics: list[str]) -> dict[str, tuple[float, float]]:
+    if not path.is_file():
+        diagnostics.append(f"{path.name} missing; using market-coordinate means")
+        return {}
+    frame = pd.read_csv(path)
+    out: dict[str, tuple[float, float]] = {}
+    for _, row in frame.iterrows():
+        try:
+            out[f"{row['province']}|{row['municipality_name']}"] = (
+                float(row["latitude"]),
+                float(row["longitude"]),
+            )
+        except (KeyError, ValueError, TypeError):
+            continue
+    return out
