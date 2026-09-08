@@ -10,6 +10,7 @@ from app.schemas.forecast import (
     CommodityProvincePair,
     EvidenceComponent,
     EvidenceResponse,
+    MethodologyResponse,
     OpportunityComponent,
     OutlookComponent,
     OutlookResponse,
@@ -67,3 +68,10 @@ def evidence(
     return EvidenceResponse(
         components=[EvidenceComponent(**item.__dict__) for item in service.evidence()]
     )
+
+
+@router.get("/methodology", response_model=MethodologyResponse)
+def methodology(
+    service: Annotated[ForecastService, Depends(get_forecast_service)],
+) -> MethodologyResponse:
+    return MethodologyResponse(**service.methodology().__dict__)

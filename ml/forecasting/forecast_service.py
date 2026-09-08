@@ -86,6 +86,30 @@ class OutlookPayload:
     opportunity: OpportunityPayload
 
 
+_DISCLAIMERS = (
+    "Estimated Demand Proxy is a FIES expenditure-category index, not observed "
+    "commodity consumption and not metric-tonne demand.",
+    "Opportunity is a peer-relative decision-support score across the five "
+    "CALABARZON provinces — not a causal finding and not a physical supply gap.",
+    "Forecasts use the model that earned the component verdict, or a "
+    "seasonal-naive fallback identified in `source`. Confidence intervals are "
+    "not published because the artifacts do not provide them.",
+    "Analytics are province-resolution; a municipality selection resolves to "
+    "its province.",
+)
+
+
+@dataclass(frozen=True)
+class MethodologyPayload:
+    schema_version: str | None
+    demand: dict
+    supply: dict
+    price: dict
+    opportunity: dict
+    commodity_flow: dict
+    disclaimers: list[str]
+
+
 @dataclass(frozen=True)
 class EvidenceComponentPayload:
     commodity: str
@@ -306,6 +330,20 @@ class ForecastService:
             shared_quarter=shared,
             breakdown=result.breakdown,
             weights_used=result.weights_used,
+        )
+
+    # -- methodology --------------------------------------------------
+
+    def methodology(self) -> MethodologyPayload:
+        m = self._registry.methodology or {}
+        return MethodologyPayload(
+            schema_version=m.get("version"),
+            demand=dict(m.get("demand", {})),
+            supply=dict(m.get("supply", {})),
+            price=dict(m.get("price", {})),
+            opportunity=dict(self._registry.opportunity_config),
+            commodity_flow=dict(self._registry.commodity_flow_methodology),
+            disclaimers=list(_DISCLAIMERS),
         )
 
     # -- evidence ------------------------------------------------------

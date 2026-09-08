@@ -1,12 +1,22 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 
 import { ForecastingClient } from "@/app/forecasting/ForecastingClient";
 import { AppPreferencesProvider, PREFERENCES_STORAGE_KEY } from "@/lib/preferences";
 import type { OutlookResponse } from "@/types/forecast";
 
-vi.mock("@/lib/forecast", () => ({ getOutlook: vi.fn() }));
-import { getOutlook } from "@/lib/forecast";
+vi.mock("@/lib/forecast", () => ({ getOutlook: vi.fn(), getMethodology: vi.fn() }));
+import { getMethodology, getOutlook } from "@/lib/forecast";
+
+const METHODOLOGY = {
+  schema_version: "3.2",
+  demand: { temporal_proxy: "FIES baseline + LFS activity" },
+  supply: { target: "PSA volume of production", frequency: "quarterly" },
+  price: { target: "PSA farmgate price", frequency: "monthly" },
+  opportunity: {},
+  commodity_flow: {},
+  disclaimers: ["Opportunity is a peer-relative decision-support score, not causal."],
+};
 
 const params = new URLSearchParams();
 vi.mock("next/navigation", () => ({ useSearchParams: () => params }));
@@ -73,6 +83,10 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+beforeEach(() => {
+  vi.mocked(getMethodology).mockResolvedValue(METHODOLOGY as never);
+});
+
 function renderForecasting() {
   return render(
     <AppPreferencesProvider>
@@ -104,6 +118,9 @@ describe("ForecastingClient", () => {
     // opportunity
     expect(screen.getByText("55.4")).toBeInTheDocument();
     expect(screen.getByText("demand pressure index")).toBeInTheDocument();
+    // explainability — one "Why this result?" per component + opportunity
+    expect(screen.getAllByText("Why this result?").length).toBe(4);
+    expect(await screen.findByText("Methodology")).toBeInTheDocument();
   });
 
   it("shows the insufficient-data opportunity message honestly", async () => {

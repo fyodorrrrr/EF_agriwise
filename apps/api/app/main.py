@@ -75,15 +75,31 @@ def _build_forecast_service(settings: Settings) -> ForecastService:
     return ForecastService(registry)
 
 
+def _build_market_registry(settings: Settings):
+    from markets.registry import MarketRegistry
+
+    artifacts_dir = Path(settings.forecast_artifacts_dir)
+    try:
+        return MarketRegistry.load(artifacts_dir)
+    except Exception:
+        forecast_logger.exception(
+            "unexpected error loading market registry from %s; using empty registry",
+            artifacts_dir,
+        )
+        return MarketRegistry(markets=(), config={})
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown hook.
 
-    The forecasting artifact registry and RAG retriever are loaded once here
-    and attached to `app.state` so requests reuse a single cached instance.
+    The forecasting artifact registry, market registry, and RAG retriever are
+    loaded once here and attached to `app.state` so requests reuse a single
+    cached instance.
     """
     app.state.rag_pipeline = _build_rag_pipeline(get_settings())
     app.state.forecast_service = _build_forecast_service(get_settings())
+    app.state.market_registry = _build_market_registry(get_settings())
     yield
 
 
@@ -104,16 +120,19 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     from app.routers import forecast as forecast_router
+    from app.routers import markets as markets_router
     from app.routers import rag as rag_router
 
     app.include_router(rag_router.router)
     app.include_router(forecast_router.router)
+    app.include_router(markets_router.router)
 
     # Ensure these attributes exist even when TestClient is used without the
     # lifespan context manager. The lifespan values win when the app runs
     # normally or under `with TestClient(...)`.
     app.state.rag_pipeline = None
     app.state.forecast_service = _build_forecast_service(settings)
+    app.state.market_registry = _build_market_registry(settings)
 
     return app
 

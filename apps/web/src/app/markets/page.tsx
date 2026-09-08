@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/ComingSoon";
+import { Suspense } from "react";
+
+import { MarketsClient } from "./MarketsClient";
 
 export const metadata: Metadata = { title: "Markets — AgriWise" };
 
 export default function MarketsPage() {
   return (
-    <ComingSoon
-      title="Markets"
-      description="The curated markets directory is under active development."
-    />
+    <Suspense fallback={null}>
+      <MarketsClient />
+    </Suspense>
   );
 }
