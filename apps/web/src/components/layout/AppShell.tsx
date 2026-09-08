@@ -3,9 +3,14 @@ import { Sidebar } from "./Sidebar";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Sidebar />
       <div className="shell-content">
-        <main className="shell-main">{children}</main>
+        <main id="main-content" tabIndex={-1} className="shell-main">
+          {children}
+        </main>
       </div>
     </div>
   );
