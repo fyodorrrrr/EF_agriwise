@@ -8,6 +8,8 @@ from app.schemas.forecast import (
     CatalogResponse,
     Commodity,
     CommodityProvincePair,
+    EvidenceComponent,
+    EvidenceResponse,
     OpportunityComponent,
     OutlookComponent,
     OutlookResponse,
@@ -19,11 +21,6 @@ router = APIRouter(prefix="/forecast", tags=["forecast"])
 
 
 def get_forecast_service(request: Request) -> ForecastService:
-    # Unlike RAG's `get_pipeline`, this does not 503 in normal operation: an
-    # empty-registry service is still valid and answers INSUFFICIENT_DATA.
-    # This defensive branch only guards against `app.state.forecast_service`
-    # never having been set, which should not happen — `main.py` always
-    # constructs a real service, even with zero artifacts.
     service = getattr(request.app.state, "forecast_service", None)
     if service is None:
         raise HTTPException(status_code=500, detail="forecast service not initialized")
@@ -60,4 +57,13 @@ def outlook(
         supply=OutlookComponent(**payload.supply.__dict__),
         price=OutlookComponent(**payload.price.__dict__),
         opportunity=OpportunityComponent(**payload.opportunity.__dict__),
+    )
+
+
+@router.get("/evidence", response_model=EvidenceResponse)
+def evidence(
+    service: Annotated[ForecastService, Depends(get_forecast_service)],
+) -> EvidenceResponse:
+    return EvidenceResponse(
+        components=[EvidenceComponent(**item.__dict__) for item in service.evidence()]
     )

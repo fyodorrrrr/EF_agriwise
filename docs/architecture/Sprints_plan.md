@@ -37,14 +37,14 @@ This plan reflects repository state at commit `f07633a` on 2026-09-08. Repositor
 | Module | Current state | Evidence | Remaining work |
 |---|---|---|---|
 | M01 App Shell & Setup | Implemented | `apps/web/src/app/setup/page.tsx`, `AppPreferencesContext` + `preferences.tsx` (with tests), sidebar/navigation, `ComingSoon` shell for unbuilt routes | Wire real pages into shared state as they land |
-| M02 Forecast Inference & Contract | **Partial — registry + contract only** | `artifact_registry.py` (loads joblib metadata only; no schema/feature validation; does not read `prepared/`, `config/`, `reports/`), `forecast_service.py` (returns each artifact's verdict/metrics/limitations; no value generation), `apps/api/app/schemas/forecast.py`, `GET /forecast/{catalog,outlook}` | Load the full artifact bundle; generate forecast values from `prepared/*` (Sprint 2a); schema-`3.2` validation; evidence extraction |
+| M02 Forecast Inference & Contract | **Sprint 2a complete (pending review)** | `artifact_registry.py` (full bundle: joblib + `prepared/` + `config/` + `reports/`, schema-`3.2`, `diagnostics`), `forecast_service.py` (`_demand_component`/`_series_component`/`evidence`), reshaped `forecast.py` schemas, `GET /forecast/{catalog,outlook,evidence}` | Contract hardening + optional rice benchmark (Sprint 3) |
 | M03 Dashboard | **Not implemented** | `apps/web/src/app/page.tsx` is a `ComingSoon` stub | Sprint 2c |
 | M04 Forecasting & Opportunity | **Not implemented** | `apps/web/src/app/forecasting/page.tsx` is a `ComingSoon` stub; `forecast_service.outlook()` hardcodes `_insufficient_data_opportunity()` — no opportunity engine exists | Opportunity engine (Sprint 2b); forecasting UI (Sprint 2c) |
 | M05 Explainability | Not implemented | no `/forecast/methodology`, no "Why this result?" component, no methodology schema | Sprint 3 |
 | M06 GIS Analytics | Not implemented | `mapping/page.tsx` stub | Sprint 4 |
 | M07 Curated Markets | Not started | `markets/` package dir exists but empty of logic; `ml/artifacts/market_coordinates/*.csv` was **removed** in the artifact replacement and must be restored; no `market_recommendation_config.json` in the repo; no registry, ranking, API, schema, or UI | Sprint 4 (restore coordinates first) |
 | M08 Chatbot | Baseline implemented | `rag/` pipeline, `POST /rag/query`, `chat/page.tsx` (with test) | Inject structured analytics context — Sprint 5 |
-| M09 Model Evidence | **Not implemented** | no `/forecast/evidence`, no `ForecastService.evidence()`, no evidence schema or tests | Backend in Sprint 2a; frontend in Sprint 5 |
+| M09 Model Evidence | **Backend done (Sprint 2a, pending review)** | `ForecastService.evidence()`, `GET /forecast/evidence`, `EvidenceResponse` schema, `test_forecast_service`/`test_forecast_router` coverage | Frontend evidence page — Sprint 5 |
 | M10 UX Resilience | Partial | loading/error/unsupported states in `setup` and `chat`; every other route is `ComingSoon` | Finish per real page as it lands |
 
 Backend tests live in `apps/api/tests/`, `rag/tests/`, and `ml/demand/tests/` (not a top-level `tests/`).
@@ -84,8 +84,8 @@ Backend tests live in `apps/api/tests/`, `rag/tests/`, and `ml/demand/tests/` (n
 | Endpoint | State | Consumer |
 |---|---|---|
 | `GET /forecast/catalog` | Implemented | setup, filters, future map/market views |
-| `GET /forecast/outlook?commodity=&province=` | Implemented — **returns verdict/metrics/limitations only, no `values`** | dashboard and forecasting (once built) |
-| `GET /forecast/evidence` | **Not implemented** | Sprint 2a → model-evidence page |
+| `GET /forecast/outlook?commodity=&province=` | Implemented — returns `observed`/`forecast` series + unit/frequency/confidence/source/label (Sprint 2a); opportunity still `INSUFFICIENT_DATA` | dashboard and forecasting (once built) |
+| `GET /forecast/evidence` | Implemented (Sprint 2a) — 12 components with model/metrics/verdict/baseline/`province_holdout` | Sprint 5 model-evidence page |
 | `GET /forecast/methodology` | Not implemented | Sprint 3 explainability UI |
 | `POST /rag/query` | Baseline implemented | chat page; analytics context not injected |
 | `/markets/*` | Not implemented | Sprint 4 markets list/map |
@@ -236,78 +236,79 @@ The original single Sprint 2 assumed M02/M03/M04 were "Implemented." They are re
 **Step 0 — environment + artifact readiness.**
 
 - [x] `uv sync` — restored `xgboost==3.4.1` from `uv.lock`; the demand `.joblib` bundles unpickle again (a drifted `.venv` had been silently degrading Tomato/Red Onion demand to `INSUFFICIENT_DATA`).
-- [x] Regression test `test_all_committed_artifact_bundles_load` (asserts every committed bundle registers). **Needs rewriting** for the new layout — the old version hardcodes 11 bundles at old paths; the new registry has `demand/{rice,vegetable_shared,banana}` + `supply/*` + `price/*` driven by `config/commodity_demand_registry.json` and filename convention.
-- [ ] **Decision (a):** restore the 4 forecasting model joblibs removed in the artifact replacement — `supply/rice`, `supply/tomato`, `price/tomato`, `price/banana`. Until they land, those four fall back to seasonal-naive (Section 3).
+- [x] Regression test rewritten as `test_committed_bundle_resolves_every_commodity_component` — drives off the registry (12 commodity×component resolutions, `diagnostics == []`, shared-VEG model_id, `model_bundle` presence), not a hardcoded path list.
+- [ ] **Decision (a):** restore the 4 forecasting model joblibs removed in the artifact replacement — `supply/rice`, `supply/tomato`, `price/tomato`, `price/banana`. Until they land, those four serve seasonal-naive from the `prepared/` `lag_4`/`lag_12` columns (Section 3), verdict/metrics still come from `reports/{component}_deployment_verdicts.csv`.
 
 **Then, within Sprint 2a:**
 
-| Order | Work | Notes |
+| Order | Work | Status |
 |---|---|---|
-| 1 | **Registry loads the full bundle** (Task 2a.1) | Extend `ArtifactRegistry` to read `prepared/`, `config/`, `reports/` and validate schema `3.2`. Everything downstream needs this. Rewrite `ml/artifacts/README.md`. |
-| 2 | **Demand values** (Task 2a.3) | Now the *easy* one — read `prepared/quarterly_demand_pressure_index.csv` + `future_demand_pressure_3q.csv`. No model call. |
-| 3 | **Supply + price values** (Task 2a.2) | `_forecast_series_component()` over `prepared/*_features.csv`: observed `target` + model-or-seasonal-naive forecast. |
-| 4 | **`/forecast/evidence`** (Task 2a.4) | Independent — assemble from `reports/*` + joblib metadata. Can run in parallel with 2–3. |
+| 1 | **Registry loads the full bundle** (Task 2a.1) | ✅ done |
+| 2 | **Demand values** (Task 2a.3) | ✅ done |
+| 3 | **Supply + price values** (Task 2a.2) | ✅ done (seasonal-naive for the 4 not-yet-restored joblibs) |
+| 4 | **`/forecast/evidence`** (Task 2a.4) | ✅ done |
 
-**Then 2b (opportunity engine)** — mostly wiring `config/opportunity_scoring_config.json` — **then 2c (dashboard + forecasting UI)**.
+All of Sprint 2a is on `sprint-2a/forecast-values-backend`, pending review. **Then 2b (opportunity engine)** — mostly wiring `config/opportunity_scoring_config.json` — **then 2c (dashboard + forecasting UI)**.
 
 **Do not start with 2c.** The pages are only as good as the API behind them.
 
-## Sprint 2a — Forecast-Value + Evidence Backend
+## Sprint 2a — Forecast-Value + Evidence Backend — COMPLETE (pending review)
 
 **Modules:** M02, M09 backend
 
-**Goal:** `/forecast/outlook` returns real `values` (demand index, supply MT, price PHP/kg) for every component with usable data, and a new `/forecast/evidence` exposes model provenance. No frontend work.
+**Goal:** `/forecast/outlook` returns real `observed`/`forecast` series (demand index, supply MT, price PHP/kg) for every component with usable data, and a new `/forecast/evidence` exposes model provenance. No frontend work.
 
-**Files:**
+**Delivered on `sprint-2a/forecast-values-backend`:**
 
-- Modify: `ml/forecasting/artifact_registry.py` — load `prepared/*.csv`, `config/*.json`, `reports/*`; schema-`3.2` validation; `diagnostics` list
-- Modify: `ml/forecasting/forecast_service.py` — `_demand_component()`, `_forecast_series_component()` (supply/price), `evidence()`
-- Modify: `ml/forecasting/domain.py` — demand registry / label lookup helpers if needed
-- Modify: `apps/api/app/schemas/forecast.py` — populate `values`/`unit`/`frequency`/`confidence`/`source`/`data_as_of`; add `demand_label`; add `EvidenceResponse` + router model
-- Modify: `apps/api/app/routers/forecast.py` — add `GET /forecast/evidence`
-- Create: `ml/artifacts/README.md` — document the new layout (`demand`/`supply`/`price`/`prepared`/`config`/`reports`) and the offline regeneration step
-- Test: `apps/api/tests/test_artifact_registry.py` (rewrite), `test_forecast_service.py`, `test_forecast_router.py`, new `test_forecast_evidence.py`
+- `ml/forecasting/artifact_registry.py` — loads joblib bundles + `prepared/*.csv` + `config/*.json` + `reports/*`; `get()` falls back to `reports/{component}_deployment_verdicts.csv` when a model joblib is absent; `model_bundle()`, `feature_table()`, `report()`, `demand_pressure_*`, `opportunity_config`, `methodology` accessors; schema-`3.2` check with `strict=` mode (`ArtifactSchemaError`); `diagnostics` list; numpy → JSON coercion.
+- `ml/forecasting/forecast_service.py` — `_demand_component()`, `_series_component()` (supply/price, model-or-seasonal-naive), `evidence()`; `OutlookComponentPayload` reshaped to `observed`/`forecast`/`label`/`metrics`.
+- `apps/api/app/schemas/forecast.py` — `SeriesPoint`, reshaped `OutlookComponent` (dropped `values`), added `INDICATIVE_PROXY`, `EvidenceComponent` / `EvidenceResponse`.
+- `apps/api/app/routers/forecast.py` — `GET /forecast/evidence`.
+- `apps/web/src/types/forecast.ts` — mirrored (`SeriesPoint`, `observed`/`forecast`, `EvidenceResponse`, `INDICATIVE_PROXY`).
+- `ml/artifacts/README.md` — rewritten for the new layout.
 
 ### Task 2a.1 — Registry loads the full bundle + schema-3.2 validation
 
-- [ ] Load and cache: joblib bundles, `prepared/*_features.csv` (as province-indexed frames), the two demand-pressure tables, `config/*.json`, `reports/*` needed for evidence.
-- [ ] Validate `schema_version == "3.2"` on bundles and `config/opportunity_scoring_config.json`; `commodity` matches the filename slug and `COMMODITIES`; required keys per `kind`.
-- [ ] Keep prod behavior (skip + warn on a bad artifact) but expose everything skipped in `registry.diagnostics`; add a strict mode that raises (for tests/CI).
-- [ ] `vegetable_shared.joblib` is loaded once and mapped to both Tomato and Red Onion via `config/commodity_demand_registry.json`.
-- [ ] Rewrite `test_all_committed_artifact_bundles_load` to drive off the registry + config, not a hardcoded list.
-- [ ] Write `ml/artifacts/README.md`.
+- [x] Load/cache joblib bundles, `prepared/*_features.csv`, the two demand-pressure tables, `config/*.json`, `reports/*`.
+- [x] Validate `schema_version == "3.2"` on bundles + `config/opportunity_scoring_config.json`; mismatch → `diagnostics` (or `ArtifactSchemaError` under `strict=True`).
+- [x] Skip + record in `registry.diagnostics`; `strict=True` raises.
+- [x] `vegetable_shared.joblib` loaded once, mapped to Tomato + Red Onion via `config/commodity_demand_registry.json`.
+- [x] Regression test rewritten (`test_committed_bundle_resolves_every_commodity_component`).
+- [x] `ml/artifacts/README.md` written.
 
 ### Task 2a.2 — Supply and price forecast values
 
-- [ ] `_forecast_series_component()` per Section 3: observed `target` tail + 3 future periods (model when the joblib is present and not `INSUFFICIENT_DATA`, else seasonal-naive from `lag_4`/`lag_12`).
-- [ ] Populate `unit` (`MT` / `PHP/kg`), `frequency` (`quarterly` / `monthly`), `source` (`learned_model:<strategy>` / `seasonal_naive`), `data_as_of` (last observed date), `confidence` (`PASS→HIGH`, `CAUTION→MODERATE`, else `NONE`), `metrics` from `reports/*_model_metrics.csv` (the deployed model's row).
-- [ ] Red Onion supply and price stay `INSUFFICIENT_DATA`, no `values`.
-- [ ] Deterministic across repeated requests; no stale values after a failed/changed request.
+- [x] `_series_component()`: observed `target` tail + up to 3 future periods — `model.predict()` when a joblib model is present, else seasonal-naive from `lag_4`/`lag_12` (filtered to non-null lag rows).
+- [x] `unit` / `frequency` / `source` (`learned_model:<strategy>` / `seasonal_naive`) / `data_as_of` / `confidence` (`PASS→HIGH`, `CAUTION→MODERATE`, else `NONE`) / `metrics` (from `reports` fallback or joblib).
+- [x] Red Onion supply and price → `INSUFFICIENT_DATA`, no series.
+- [x] Deterministic — registry hands back copies; no request-time state.
+- [ ] Follow-up: when decision-(a) joblibs land, `source` flips to `learned_model:*` for rice/tomato supply and tomato/banana price with no code change.
 
 ### Task 2a.3 — Demand values from the committed index
 
-- [ ] `_demand_component()` reads `prepared/quarterly_demand_pressure_index.csv` + `future_demand_pressure_3q.csv`, filters `(commodity, province)`, returns observed tail + 3 forecast quarters.
-- [ ] `unit = "index (base≈100)"`, `frequency = "quarterly"`, `source = "demand_pressure_index"`, `data_as_of` = last observed quarter.
-- [ ] `demand_label` from `config/commodity_demand_registry.json`; global label stays **Estimated Demand Proxy**; carry the joblib `verdict` + `limitations`.
-- [ ] Map the forecast-row `confidence` string to the `Confidence` enum for opportunity.
-- [ ] Never call the demand `.joblib` at request time.
+- [x] `_demand_component()` reads the two demand-pressure tables, filters `(commodity, province)`, returns observed tail + 3 forecast quarters.
+- [x] `unit = "index (base~100)"`, `frequency = "quarterly"`, `source = "demand_pressure_index"`, `data_as_of` = last observed quarter.
+- [x] `label` from `config/commodity_demand_registry.json` (e.g. "Cereal Household Demand Proxy"); global label stays **Estimated Demand Proxy** (UI concern); carries joblib `verdict` + `limitations`.
+- [x] Forecast-row `confidence` (`moderate_proxy` / `low_to_moderate_shared_veg_proxy`) → `MODERATE`.
+- [x] Never calls the demand `.joblib` at request time.
 
 ### Task 2a.4 — `GET /forecast/evidence`
 
-- [ ] `ForecastService.evidence()` returns, per commodity × component: target, model / `selected_model`, `metrics` (+ seasonal-naive baseline where present), verdict + reason, frequency, province resolution, `source`, `schema_version`, `limitations`, and the demand `province_holdout` table where available.
-- [ ] Draw from `reports/{supply,price}_deployment_verdicts.csv`, `*_model_metrics.csv`, `demand_validation_summary.csv`, `unified_deployment_summary.csv`, and the demand `*_validation_report.md`.
-- [ ] Missing models/metrics render as explicitly unavailable, not zero.
-- [ ] Tomato and Red Onion demand show the same shared `VEG` evidence.
+- [x] `ForecastService.evidence()` — 12 components; per component: target (joblib or `methodology_registry.json`), `model` / `selected_model`, `metrics`, seasonal-naive `baseline` (from `reports/*_model_metrics.csv`), verdict + `reason`, frequency, `province_resolution`, `source`, `schema_version`, `limitations`, demand `province_holdout`.
+- [x] Missing model/metrics → fields `None`/empty, verdict `INSUFFICIENT_DATA`.
+- [x] Tomato and Red Onion demand share the `vegetable_shared` evidence.
 
-**Verification:**
+**Verification (all green):**
 
 ```powershell
-cd apps/api
-uv run pytest tests/test_artifact_registry.py tests/test_forecast_service.py tests/test_forecast_router.py tests/test_forecast_evidence.py
-cd ../..; uv run ruff check apps/api/app ml
+cd apps/api; uv run pytest tests/test_artifact_registry.py tests/test_forecast_service.py tests/test_forecast_router.py   # 37 passed
+cd ../..; uv run ruff check apps/api/app ml/forecasting                                                                  # clean
+cd apps/web; npm run typecheck; npm run test; npm run lint; npm run build                                                # 17 passed, clean
 ```
 
-**Exit evidence:** `GET /forecast/outlook?commodity=Rice&province=Laguna` returns demand (index), supply (MT), price (PHP/kg) `values`; `GET /forecast/evidence` returns the full 4×3 matrix; Red Onion supply/price stay value-free; Red Onion demand returns an index series.
+**Exit evidence:** `GET /forecast/outlook?commodity=Rice&province=Laguna` returns demand (index, `USABLE_PROXY`, `moderate` confidence), supply (MT, `seasonal_naive`), price (PHP/kg, `learned_model:hist_gradient_boosting`); `GET /forecast/evidence` returns 12 components; Red Onion supply/price value-free, its demand index present.
+
+**Known limitations:** opportunity still `INSUFFICIENT_DATA` (Sprint 2b); tomato price seasonal-naive forecast skips periods where `lag_12` is null (starts at the first quarter with a seasonal reference).
 
 ## Sprint 2b — Opportunity Engine
 

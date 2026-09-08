@@ -2,9 +2,15 @@
 
 export type Commodity = "Rice" | "Tomato" | "Red Onion" | "Banana";
 export type Province = "Batangas" | "Cavite" | "Laguna" | "Quezon" | "Rizal";
-export type Verdict = "PASS" | "CAUTION" | "INSUFFICIENT_DATA" | "USABLE_PROXY";
+export type Verdict =
+  | "PASS"
+  | "CAUTION"
+  | "INSUFFICIENT_DATA"
+  | "USABLE_PROXY"
+  | "INDICATIVE_PROXY";
 export type Frequency = "monthly" | "quarterly";
 export type Confidence = "HIGH" | "MODERATE" | "NONE";
+export type ForecastComponent = "demand" | "supply" | "price";
 
 export interface CommodityProvincePair {
   commodity: Commodity;
@@ -17,15 +23,23 @@ export interface CatalogResponse {
   pairs: CommodityProvincePair[];
 }
 
+export interface SeriesPoint {
+  period: string; // ISO date, e.g. "2026-01-01"
+  value: number;
+}
+
 export interface OutlookComponent {
   verdict: Verdict;
-  values: number[] | null;
+  observed: SeriesPoint[] | null;
+  forecast: SeriesPoint[] | null;
   unit: string | null;
   frequency: Frequency | null;
   confidence: Confidence | null;
   source: string | null;
   data_as_of: string | null;
+  label: string | null; // demand only
   limitations: string[];
+  metrics: Record<string, number>;
 }
 
 export interface OpportunityComponent {
@@ -42,4 +56,25 @@ export interface OutlookResponse {
   supply: OutlookComponent;
   price: OutlookComponent;
   opportunity: OpportunityComponent;
+}
+
+export interface EvidenceComponent {
+  commodity: Commodity;
+  component: ForecastComponent;
+  target: string | null;
+  model: string | null;
+  verdict: Verdict;
+  reason: string | null;
+  frequency: Frequency | null;
+  province_resolution: string;
+  source: string | null;
+  schema_version: string | null;
+  metrics: Record<string, number>;
+  baseline: Record<string, number>;
+  province_holdout: Record<string, unknown>[];
+  limitations: string[];
+}
+
+export interface EvidenceResponse {
+  components: EvidenceComponent[];
 }

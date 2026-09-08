@@ -31,20 +31,14 @@ def _write_demand_bundle(path: Path, *, model_id: str, verdict: str) -> None:
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _COMMITTED_ARTIFACTS_DIR = _REPO_ROOT / "ml" / "artifacts"
 
-# The bundles committed under ml/artifacts/. Supply covers all four commodities;
-# price has no red_onion artifact (no deployable price model).
-_EXPECTED_BUNDLES = [
-    ("Rice", "demand"),
-    ("Tomato", "demand"),
-    ("Red Onion", "demand"),
-    ("Banana", "demand"),
-    ("Rice", "supply"),
-    ("Tomato", "supply"),
-    ("Red Onion", "supply"),
-    ("Banana", "supply"),
-    ("Rice", "price"),
-    ("Tomato", "price"),
-    ("Banana", "price"),
+# Every (commodity, component) the registry must resolve a verdict for against
+# the committed bundle — from a joblib, or from a reports/ deployment-verdicts
+# row when the model joblib is absent. Red Onion price has a row too, with
+# verdict INSUFFICIENT_DATA.
+_EXPECTED_RESOLVED = [
+    (commodity, component)
+    for commodity in ("Rice", "Tomato", "Red Onion", "Banana")
+    for component in ("demand", "supply", "price")
 ]
 
 
@@ -189,31 +183,26 @@ def test_load_reads_prepared_tables_demand_pressure_and_configs(tmp_path):
 
 @pytest.mark.skipif(
     not _COMMITTED_ARTIFACTS_DIR.is_dir(),
-    reason="committed artifact bundles not present in this checkout",
+    reason="committed artifact bundle not present in this checkout",
 )
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Sprint 2a.1 (in progress): demand now resolves via "
-        "config/commodity_demand_registry.json, but the supply/price model joblibs "
-        "removed in the artifact replacement (supply/{rice,tomato}, price/{tomato,banana}) "
-        "have not been restored yet (decision (a)). This hardcoded list is rewritten "
-        "to drive off the registry later in 2a.1."
-    ),
-)
-def test_all_committed_artifact_bundles_load():
-    """Every bundle under ml/artifacts/ must register.
-
-    Regression guard: the shared VEG demand bundle (Tomato, Red Onion) pickles
-    an XGBoost estimator, so a runtime without `xgboost` installed silently
-    drops those two commodities' demand to INSUFFICIENT_DATA.
-    """
+def test_committed_bundle_resolves_every_commodity_component():
+    """Every commodity/component resolves a verdict against the real bundle,
+    and nothing was silently skipped."""
     registry = ArtifactRegistry.load(_COMMITTED_ARTIFACTS_DIR)
 
     missing = [
-        (commodity, component)
-        for commodity, component in _EXPECTED_BUNDLES
-        if not registry.has(commodity, component)
+        pair for pair in _EXPECTED_RESOLVED if not registry.has(*pair)
     ]
+    assert not missing, f"unresolved: {missing}"
+    assert registry.diagnostics == [], registry.diagnostics
 
-    assert not missing, f"artifact bundles failed to load: {missing}"
+    # Demand: shared VEG estimator backs Tomato + Red Onion.
+    assert (
+        registry.get("Tomato", "demand").model_id
+        == registry.get("Red Onion", "demand").model_id
+    )
+    # The price/rice joblib carries a fitted model; the red_onion supply joblib
+    # is present but model-free (seasonal-naive / INSUFFICIENT_DATA).
+    assert registry.model_bundle("Rice", "price")["model"] is not None
+    ro_supply = registry.model_bundle("Red Onion", "supply")
+    assert ro_supply is not None and ro_supply["model"] is None
