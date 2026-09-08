@@ -67,11 +67,18 @@ class RagPipeline:
         and a model-download failure surfaces at startup (as a 503) not mid-request (as a 500)."""
         self._retriever.retrieve("warmup")
 
-    def answer(self, question: str, history: list[ChatTurn] | None = None) -> RagAnswer:
+    def answer(
+        self,
+        question: str,
+        history: list[ChatTurn] | None = None,
+        analytics_context: str | None = None,
+    ) -> RagAnswer:
         if self._generator is None:
             raise RagGenerationError("generation unavailable: GROQ_API_KEY not configured")
         retrieved = self._retriever.retrieve(question)
-        messages = build_messages(question, history or [], retrieved)
+        messages = build_messages(
+            question, history or [], retrieved, analytics_context=analytics_context
+        )
         text = self._generator.generate(messages)
         return RagAnswer(
             answer=text,
