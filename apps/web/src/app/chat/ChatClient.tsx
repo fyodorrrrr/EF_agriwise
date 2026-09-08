@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 
+import { usePreferences } from "@/lib/preferences";
 import { askAgriWise } from "@/lib/rag";
 import type { Citation } from "@/types/rag";
 
-type Turn = { role: "user" | "assistant"; content: string; citations?: Citation[] };
+type Turn = {
+  role: "user" | "assistant";
+  content: string;
+  citations?: Citation[];
+  contextUsed?: boolean;
+};
 
 const EXAMPLES = [
   "How do I record farm expenses in a Farm Business School?",
@@ -19,6 +25,7 @@ function pageLabel(c: Citation): string {
 }
 
 export default function ChatClient() {
+  const { preferences } = usePreferences();
   const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -31,10 +38,16 @@ export default function ChatClient() {
       const res = await askAgriWise(
         question,
         history.map((m) => ({ role: m.role, content: m.content })),
+        { commodity: preferences.commodity, province: preferences.province },
       );
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: res.answer, citations: res.citations },
+        {
+          role: "assistant",
+          content: res.answer,
+          citations: res.citations,
+          contextUsed: res.analytics_context_used,
+        },
       ]);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -63,6 +76,16 @@ export default function ChatClient() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
       <h1 className="text-2xl font-semibold">Ask AgriWise</h1>
+
+      {preferences.commodity && preferences.province && (
+        <p className="text-xs text-muted">
+          Answers can reference your current analytics selection:{" "}
+          <span className="font-medium">
+            {preferences.commodity} · {preferences.province}
+          </span>
+          .
+        </p>
+      )}
 
       {messages.length === 0 && (
         <div className="card flex flex-col gap-2">
@@ -100,6 +123,11 @@ export default function ChatClient() {
                   <li key={j}>{pageLabel(c)}</li>
                 ))}
               </ul>
+            )}
+            {m.contextUsed && (
+              <p className="mt-1 text-xs text-muted">
+                Used your current {preferences.commodity} / {preferences.province} analytics.
+              </p>
             )}
           </li>
         ))}

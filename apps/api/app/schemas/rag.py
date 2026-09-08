@@ -13,6 +13,9 @@ class ChatMessage(BaseModel):
 class RagQueryRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=50)
+    # Selectors only — the server resolves the actual analytics figures.
+    commodity: str | None = Field(default=None, max_length=32)
+    province: str | None = Field(default=None, max_length=32)
 
 
 class Citation(BaseModel):
@@ -25,3 +28,4 @@ class Citation(BaseModel):
 class RagQueryResponse(BaseModel):
     answer: str
     citations: list[Citation]
+    analytics_context_used: bool = False

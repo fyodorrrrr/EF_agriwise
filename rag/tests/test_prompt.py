@@ -17,6 +17,8 @@ def test_system_prompt_first_and_rules_present():
     lowered = SYSTEM_PROMPT.lower()
     assert "cite" in lowered
     assert "do not" in lowered  # refusal / no-outside-knowledge language
+    assert "estimated demand proxy" in lowered  # analytics-labelling rule
+    assert "not available" in lowered  # refuse-to-estimate rule
 
 
 def test_citation_tags_use_page_ranges():
@@ -42,12 +44,16 @@ def test_empty_retrieval_has_explicit_note():
 
 def test_analytics_context_is_separate_and_optional():
     without = build_messages("q", [], [_chunk("Doc", 1, 1)])
-    assert all("analytics context" not in m["content"].lower() for m in without)
+    assert [m["role"] for m in without] == ["system", "user"]
 
     with_ctx = build_messages(
         "q", [], [_chunk("Doc", 1, 1)], analytics_context="Rice demand: USABLE_PROXY"
     )
-    ctx_msgs = [m for m in with_ctx if "analytics context" in m["content"].lower()]
+    ctx_msgs = [
+        m for m in with_ctx if m["content"].startswith("Current AgriWise analytics context:")
+    ]
     assert len(ctx_msgs) == 1
     assert ctx_msgs[0]["role"] == "system"
     assert "Rice demand: USABLE_PROXY" in ctx_msgs[0]["content"]
+    # ...and it is a distinct message, not folded into the excerpts/question turn
+    assert "USABLE_PROXY" not in with_ctx[-1]["content"]

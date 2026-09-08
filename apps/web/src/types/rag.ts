@@ -15,9 +15,12 @@ export interface Citation {
 export interface RagQueryRequest {
   question: string;
   history: ChatMessage[];
+  commodity?: string | null;
+  province?: string | null;
 }
 
 export interface RagQueryResponse {
   answer: string;
   citations: Citation[];
+  analytics_context_used: boolean;
 }

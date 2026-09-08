@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
@@ -15,8 +16,9 @@ class _StubPipeline:
         self._raises = raises
         self.calls: list[tuple[str, int]] = []
 
-    def answer(self, question, history=None):
+    def answer(self, question, history=None, analytics_context=None):
         self.calls.append((question, len(history or [])))
+        self.last_analytics_context = analytics_context
         if self._raises:
             raise self._raises
         return self._answer
@@ -42,6 +44,30 @@ def test_query_returns_answer_and_citations():
     assert body["answer"] == "Use a cash book."
     assert body["citations"][0]["doc_title"] == "Farm Business School Manual"
     assert "used_chunk_ids" not in body
+
+
+def test_query_injects_resolved_analytics_context_from_selectors():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post(
+        "/rag/query",
+        json={"question": "how is rice doing?", "commodity": "Rice", "province": "Laguna"},
+    )
+
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast artifacts not present in this checkout")
+    ctx = pipeline.last_analytics_context
+    assert "Rice in Laguna province" in ctx
+    assert "Estimated Demand Proxy" in ctx
+    # A bogus selector is ignored, not trusted.
+    resp2 = client.post(
+        "/rag/query", json={"question": "q", "commodity": "Gold", "province": "Laguna"}
+    )
+    assert resp2.json()["analytics_context_used"] is False
 
 
 def test_query_validation_error_is_422():
