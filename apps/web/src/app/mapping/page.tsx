@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+
 import { MapPageClient } from "@/components/map/MapPageClient";
+import { MappingAnalytics } from "./MappingAnalytics";
 
 export const metadata: Metadata = { title: "Mapping — AgriWise" };
 
@@ -10,11 +12,12 @@ export default function MappingPage() {
         <div>
           <h1>Mapping</h1>
           <p>
-            CALABARZON administrative boundaries. Toggle layers with the control in the top-right
-            corner of the map.
+            CALABARZON administrative boundaries with province-resolution analytics.
+            Toggle boundary layers on the map; pick an analytics layer below.
           </p>
         </div>
       </div>
+      <MappingAnalytics />
       <MapPageClient />
     </div>
   );
