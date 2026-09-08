@@ -25,7 +25,7 @@ RESOLUTION_NOTE = (
 
 # How much observed history to return per component (points, oldest -> newest).
 _OBSERVED_TAIL = {"demand": 8, "supply": 8, "price": 12}
-_FORECAST_HORIZON = 3
+_FORECAST_HORIZON = 4
 
 _UNIT = {
     "demand": "index (base~100)",

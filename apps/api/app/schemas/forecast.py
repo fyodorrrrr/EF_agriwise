@@ -44,7 +44,7 @@ class SeriesPoint(BaseModel):
 class OutlookComponent(BaseModel):
     verdict: Verdict
     observed: list[SeriesPoint] | None = None  # historical tail, oldest -> newest
-    forecast: list[SeriesPoint] | None = None  # up to 3 future periods
+    forecast: list[SeriesPoint] | None = None  # up to 4 future periods
     unit: str | None = None
     frequency: Frequency | None = None
     confidence: Confidence | None = None
