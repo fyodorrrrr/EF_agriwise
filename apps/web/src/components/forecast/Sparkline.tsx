@@ -49,7 +49,7 @@ export function Sparkline({
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label="Trend"
-      className="text-[var(--color-accent-500)]"
+      className="h-auto max-w-full shrink-0 text-[var(--color-accent-500)]"
     >
       {obsPath && (
         <path d={obsPath} fill="none" stroke="currentColor" strokeWidth={1.5} />

@@ -50,8 +50,8 @@ export function ComponentCard({
         </p>
       ) : (
         <>
-          <div className="flex items-end justify-between gap-3">
-            <div>
+          <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+            <div className="min-w-0">
               <div className="text-xl font-bold">
                 {value === null ? "—" : formatValue(value, component.unit)}
               </div>

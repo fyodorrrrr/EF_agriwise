@@ -83,12 +83,12 @@ export function ForecastingClient() {
             province. Analytics are province-resolution — never a municipality forecast.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Commodity</span>
             <select
               aria-label="Commodity"
-              className="input-bare border rounded-md px-2 py-1"
+              className="select"
               value={commodity ?? ""}
               onChange={(e) => setCommodity((e.target.value || null) as Commodity | null)}
             >
@@ -104,7 +104,7 @@ export function ForecastingClient() {
             <span className="font-medium">Province</span>
             <select
               aria-label="Province"
-              className="input-bare border rounded-md px-2 py-1"
+              className="select"
               value={province ?? ""}
               onChange={(e) => setProvince((e.target.value || null) as Province | null)}
             >
@@ -184,7 +184,7 @@ function MethodologyPanel({ methodology }: { methodology: MethodologyResponse })
   return (
     <details className="card text-xs">
       <summary className="cursor-pointer card-kicker">Methodology</summary>
-      <dl className="mt-2 flex flex-col gap-1">
+      <dl className="mt-2 flex flex-col gap-1 [overflow-wrap:anywhere]">
         <div>
           <dt className="text-muted">Supply</dt>
           <dd>
@@ -248,7 +248,7 @@ function OpportunityCard({
         <span className={verdictBadgeClass(opp.verdict)}>{verdictLabel(opp.verdict)}</span>
       </div>
 
-      <div className="flex items-baseline gap-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="text-2xl font-bold">{opp.score}</span>
         <span className="badge badge-accent">
           {opp.classification?.replaceAll("_", " ").toLowerCase()}
@@ -260,24 +260,26 @@ function OpportunityCard({
         )}
       </div>
 
-      <table className="w-full text-xs">
-        <thead className="text-muted">
-          <tr>
-            <th className="text-left font-medium">Component</th>
-            <th className="text-right font-medium">Weight</th>
-            <th className="text-right font-medium">Score (0–100)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(opp.breakdown).map(([key, entry]) => (
-            <tr key={key}>
-              <td className="py-0.5">{key.replaceAll("_", " ")}</td>
-              <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
-              <td className="text-right">{entry.score.toFixed(0)}</td>
+      <div className="-mx-1 overflow-x-auto px-1">
+        <table className="w-full min-w-[15rem] text-xs">
+          <thead className="text-muted">
+            <tr>
+              <th className="text-left font-medium">Component</th>
+              <th className="text-right font-medium">Weight</th>
+              <th className="text-right font-medium">Score (0–100)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Object.entries(opp.breakdown).map(([key, entry]) => (
+              <tr key={key}>
+                <td className="py-0.5">{key.replaceAll("_", " ")}</td>
+                <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
+                <td className="text-right">{entry.score.toFixed(0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <WhyThisResult
         kind="opportunity"

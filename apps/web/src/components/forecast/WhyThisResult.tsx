@@ -13,8 +13,8 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
   return (
     <div className="flex justify-between gap-4 py-0.5">
-      <dt className="text-muted">{label}</dt>
-      <dd className="text-right">{value}</dd>
+      <dt className="shrink-0 text-muted">{label}</dt>
+      <dd className="min-w-0 text-right [overflow-wrap:anywhere]">{value}</dd>
     </div>
   );
 }

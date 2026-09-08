@@ -25,7 +25,7 @@ function pageLabel(c: Citation): string {
 }
 
 export default function ChatClient() {
-  const { preferences } = usePreferences();
+  const { preferences, isHydrated } = usePreferences();
   const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -74,10 +74,10 @@ export default function ChatClient() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
       <h1 className="text-2xl font-semibold">Ask AgriWise</h1>
 
-      {preferences.commodity && preferences.province && (
+      {isHydrated && preferences.commodity && preferences.province && (
         <p className="text-xs text-muted">
           Answers can reference your current analytics selection:{" "}
           <span className="font-medium">
@@ -109,16 +109,21 @@ export default function ChatClient() {
 
       <ul className="flex flex-col gap-3">
         {messages.map((m, i) => (
-          <li key={i} className={m.role === "user" ? "self-end text-right" : "self-start"}>
+          <li
+            key={i}
+            className={`flex max-w-[92%] flex-col sm:max-w-[80%] ${
+              m.role === "user" ? "items-end self-end text-right" : "items-start self-start"
+            }`}
+          >
             <div
-              className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
+              className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm [overflow-wrap:anywhere] ${
                 m.role === "user" ? "bg-accent-500 text-on-accent" : "bg-sunken text-body"
               }`}
             >
               {m.content}
             </div>
             {m.citations && m.citations.length > 0 && (
-              <ul className="mt-1 text-xs text-muted">
+              <ul className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">
                 {m.citations.map((c, j) => (
                   <li key={j}>{pageLabel(c)}</li>
                 ))}
@@ -147,7 +152,7 @@ export default function ChatClient() {
         data-testid="chat-form"
         aria-label="Ask AgriWise"
         onSubmit={onSubmit}
-        className="input-shell mt-auto"
+        className="input-shell mt-auto sticky bottom-2"
       >
         <input
           type="text"
@@ -162,6 +167,6 @@ export default function ChatClient() {
           Send
         </button>
       </form>
-    </main>
+    </div>
   );
 }

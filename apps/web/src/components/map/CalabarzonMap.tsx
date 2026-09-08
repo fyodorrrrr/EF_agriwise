@@ -186,7 +186,7 @@ export default function CalabarzonMap({
   return (
     <div className="flex flex-col gap-2">
       {error && <p className="state state-error">{error}</p>}
-      <div className="relative h-[70vh] w-full overflow-hidden rounded-lg border border-line">
+      <div className="relative h-[60vh] min-h-[360px] w-full overflow-hidden rounded-lg border border-line sm:h-[70vh]">
         <MapContainer
           bounds={CALABARZON_BOUNDS}
           maxBounds={MAX_BOUNDS}
@@ -278,7 +278,7 @@ export default function CalabarzonMap({
           </LayersControl>
         </MapContainer>
         <div
-          className="pointer-events-none absolute bottom-4 left-4 z-[1000] min-w-48 rounded-md border border-line bg-white/95 p-3 shadow-md"
+          className="pointer-events-none absolute bottom-3 left-3 z-[1000] max-w-[60%] rounded-md border border-line bg-white/95 p-3 shadow-md sm:bottom-4 sm:left-4 sm:max-w-none sm:min-w-48"
           aria-label="Heatmap legend"
         >
           <div className="text-xs font-semibold text-ink">{heatmapLabel}</div>
