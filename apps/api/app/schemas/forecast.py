@@ -59,6 +59,9 @@ class OpportunityComponent(BaseModel):
     verdict: Verdict
     score: float | None = None
     classification: str | None = None
+    shared_quarter: str | None = None  # ISO date of the quarter scored
+    breakdown: dict = Field(default_factory=dict)  # per-component raw/score/weight
+    weights_used: dict = Field(default_factory=dict)  # renormalized weights
 
 
 class OutlookResponse(BaseModel):

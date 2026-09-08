@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/ComingSoon";
+import { Suspense } from "react";
+
+import { ForecastingClient } from "./ForecastingClient";
 
 export const metadata: Metadata = { title: "Forecasting — AgriWise" };
 
 export default function ForecastingPage() {
   return (
-    <ComingSoon
-      title="Forecasting"
-      description="Demand, supply, price, and opportunity forecasting is under active development."
-    />
+    <Suspense fallback={null}>
+      <ForecastingClient />
+    </Suspense>
   );
 }
