@@ -6,7 +6,10 @@ import { AppPreferencesProvider } from "@/lib/preferences";
 import type { OutlookResponse } from "@/types/forecast";
 
 vi.mock("@/lib/forecast", () => ({ getOutlook: vi.fn() }));
+vi.mock("@/lib/markets", () => ({ listMarkets: vi.fn() }));
+vi.mock("@/components/map/MapPageClient", () => ({ MapPageClient: () => null }));
 import { getOutlook } from "@/lib/forecast";
+import { listMarkets } from "@/lib/markets";
 
 function outlook(province: string, supplyOk: boolean): OutlookResponse {
   const insufficient = {
@@ -55,6 +58,23 @@ afterEach(() => {
 
 describe("MappingAnalytics", () => {
   it("lists a province-resolution value per province and marks unavailable layers", async () => {
+    vi.mocked(listMarkets).mockResolvedValue({
+      markets: [
+        {
+          market_id: "LAG-001",
+          market_name: "Biñan Public Market",
+          municipality: "Biñan",
+          province: "Laguna",
+          latitude: 14.33,
+          longitude: 121.08,
+          market_type: "Public Market",
+          coordinate_confidence: "HIGH",
+          source_url: null,
+          notes: null,
+        },
+      ],
+      diagnostics: [],
+    });
     vi.mocked(getOutlook).mockImplementation((_c, p) =>
       Promise.resolve(outlook(p, p === "Laguna") as never),
     );
@@ -67,6 +87,7 @@ describe("MappingAnalytics", () => {
 
     // demand layer: every province has a value
     await waitFor(() => expect(screen.getByText("Batangas")).toBeInTheDocument());
+    expect(await screen.findByText("1 mapped market")).toBeInTheDocument();
     expect(screen.queryByText("not available")).toBeNull();
 
     // switch to supply: only Laguna is available

@@ -23,3 +23,14 @@ export function selectedBoundaryStyle(level: BoundaryLevel): BoundaryStyle {
   const base = BOUNDARY_STYLES[level];
   return { ...base, color: "#000000", weight: base.weight + 2, fillOpacity: 0.18 };
 }
+
+const HEAT_COLORS = ["#fde68a", "#fbbf24", "#f97316", "#dc2626"] as const;
+const NO_DATA_COLOR = "#d6d3d1";
+
+/** Relative province color for the currently selected commodity and metric. */
+export function heatColor(value: number | null, min: number, max: number): string {
+  if (value === null || !Number.isFinite(value)) return NO_DATA_COLOR;
+  const ratio = max === min ? 0.5 : Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const index = ratio <= 0.25 ? 0 : ratio <= 0.5 ? 1 : ratio <= 0.75 ? 2 : 3;
+  return HEAT_COLORS[index];
+}

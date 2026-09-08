@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { MapPageClient } from "@/components/map/MapPageClient";
 import { MappingAnalytics } from "./MappingAnalytics";
 
 export const metadata: Metadata = { title: "Mapping — AgriWise" };
@@ -18,7 +17,6 @@ export default function MappingPage() {
         </div>
       </div>
       <MappingAnalytics />
-      <MapPageClient />
     </div>
   );
 }
