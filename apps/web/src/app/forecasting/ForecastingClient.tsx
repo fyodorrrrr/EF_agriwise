@@ -5,11 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { ComponentCard } from "@/components/forecast/ComponentCard";
+import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { COMMODITIES, PROVINCES } from "@/lib/domain";
 import { getMethodology, getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
+import { toQuarterly } from "@/lib/quarterly";
 import type {
   Commodity,
   MethodologyResponse,
@@ -18,6 +20,8 @@ import type {
 } from "@/types/forecast";
 
 type Status = "idle" | "loading" | "ready" | "error";
+
+const QUARTER_OPTIONS = [2, 3, 4] as const;
 
 export function ForecastingClient() {
   const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
@@ -38,6 +42,7 @@ export function ForecastingClient() {
   const key = commodity && province ? `${commodity}|${province}` : null;
   const [result, setResult] = useState<{ key: string; outlook: OutlookResponse } | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [quartersToShow, setQuartersToShow] = useState<number>(4);
 
   useEffect(() => {
     if (!key || !commodity || !province) return;
@@ -137,18 +142,70 @@ export function ForecastingClient() {
       {status === "ready" && outlook && (
         <>
           <p className="text-xs text-muted">{outlook.resolution_note}</p>
-          <div className="grid gap-3 md:grid-cols-3">
-            {(["demand", "supply", "price"] as const).map((kind) => (
-              <div key={kind} className="flex flex-col gap-2">
-                <ComponentCard kind={kind} component={outlook[kind]} detailed />
-                <WhyThisResult
-                  kind={kind}
-                  component={outlook[kind]}
-                  disclaimer={disclaimerFor(kind, methodology)}
-                />
-              </div>
-            ))}
-          </div>
+
+          {(() => {
+            const series = {
+              demand: {
+                observed: outlook.demand.observed,
+                forecast: outlook.demand.forecast,
+              },
+              supply: {
+                observed: outlook.supply.observed,
+                forecast: outlook.supply.forecast,
+              },
+              price: {
+                observed: toQuarterly(outlook.price.observed),
+                forecast: toQuarterly(outlook.price.forecast),
+              },
+            };
+            const maxAvailable = Math.max(
+              series.demand.forecast?.length ?? 0,
+              series.supply.forecast?.length ?? 0,
+              series.price.forecast.length,
+            );
+
+            return (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Forecast horizon</span>
+                  <div className="chip-group">
+                    {QUARTER_OPTIONS.map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        className="chip"
+                        aria-pressed={quartersToShow === n}
+                        disabled={maxAvailable > 0 && n > maxAvailable}
+                        onClick={() => setQuartersToShow(n)}
+                      >
+                        Next {n} quarters
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {(["demand", "supply", "price"] as const).map((kind) => (
+                    <div key={kind} className="flex flex-col gap-2">
+                      <ComponentCard kind={kind} component={outlook[kind]} detailed />
+                      <QuarterlyForecastChart
+                        observed={series[kind].observed}
+                        forecast={series[kind].forecast}
+                        unit={outlook[kind].unit}
+                        quartersToShow={quartersToShow}
+                      />
+                      <WhyThisResult
+                        kind={kind}
+                        component={outlook[kind]}
+                        disclaimer={disclaimerFor(kind, methodology)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+
           <OpportunityCard outlook={outlook} methodology={methodology} />
           {methodology && <MethodologyPanel methodology={methodology} />}
         </>

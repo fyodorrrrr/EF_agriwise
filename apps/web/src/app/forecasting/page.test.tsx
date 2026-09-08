@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { ForecastingClient } from "@/app/forecasting/ForecastingClient";
 import { AppPreferencesProvider, PREFERENCES_STORAGE_KEY } from "@/lib/preferences";
@@ -121,6 +121,52 @@ describe("ForecastingClient", () => {
     // explainability — one "Why this result?" per component + opportunity
     expect(screen.getAllByText("Why this result?").length).toBe(4);
     expect(await screen.findByText("Methodology")).toBeInTheDocument();
+  });
+
+  it("lets the user pick a forecast horizon of 2, 3, or 4 quarters", async () => {
+    localStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
+    );
+    vi.mocked(getOutlook).mockResolvedValue({
+      ...OUTLOOK,
+      demand: {
+        ...OUTLOOK.demand,
+        forecast: [
+          { period: "2026-01-01", value: 104 },
+          { period: "2026-04-01", value: 106 },
+          { period: "2026-07-01", value: 108 },
+          { period: "2026-10-01", value: 110 },
+        ],
+      },
+    } as never);
+
+    renderForecasting();
+
+    const fourQ = await screen.findByRole("button", { name: "Next 4 quarters" });
+    const twoQ = screen.getByRole("button", { name: "Next 2 quarters" });
+    expect(fourQ).toHaveAttribute("aria-pressed", "true");
+    expect(twoQ).toHaveAttribute("aria-pressed", "false");
+    expect(twoQ).not.toBeDisabled();
+
+    fireEvent.click(twoQ);
+
+    expect(twoQ).toHaveAttribute("aria-pressed", "true");
+    expect(fourQ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("disables horizon options beyond what the shortest available series supports", async () => {
+    localStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
+    );
+    // OUTLOOK's demand/supply/price forecasts each carry a single quarter.
+    vi.mocked(getOutlook).mockResolvedValue(OUTLOOK as never);
+
+    renderForecasting();
+
+    const threeQ = await screen.findByRole("button", { name: "Next 3 quarters" });
+    expect(threeQ).toBeDisabled();
   });
 
   it("shows the insufficient-data opportunity message honestly", async () => {
