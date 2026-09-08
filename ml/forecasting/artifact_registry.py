@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Literal
 
 import joblib
+import pandas as pd
 
 from ml.forecasting.domain import COMMODITIES, COMPONENTS
 
@@ -30,7 +31,18 @@ logger = logging.getLogger("agriwise.forecast")
 
 Component = Literal["demand", "supply", "price"]
 
-_DEMAND_REGISTRY_REL = Path("config") / "commodity_demand_registry.json"
+_CONFIG_DIR = "config"
+_PREPARED_DIR = "prepared"
+_DEMAND_REGISTRY_REL = Path(_CONFIG_DIR) / "commodity_demand_registry.json"
+
+# config/<name>.json -> registry.configs[<key>]
+_CONFIG_FILES = {
+    "opportunity_scoring": "opportunity_scoring_config.json",
+    "commodity_flow": "commodity_flow_methodology.json",
+}
+_MODELED_COMPONENTS: tuple[str, ...] = ("supply", "price")
+_DEMAND_PRESSURE_OBSERVED = "quarterly_demand_pressure_index.csv"
+_DEMAND_PRESSURE_FORECAST = "future_demand_pressure_3q.csv"
 
 
 def slugify_commodity(commodity: str) -> str:
@@ -62,6 +74,10 @@ class ArtifactRegistry:
         self._artifacts_dir = artifacts_dir
         self._bundles: dict[tuple[str, str], ArtifactMetadata] = {}
         self._diagnostics: list[str] = []
+        self._feature_tables: dict[tuple[str, str], pd.DataFrame] = {}
+        self._demand_observed: pd.DataFrame = pd.DataFrame()
+        self._demand_forecast: pd.DataFrame = pd.DataFrame()
+        self._configs: dict[str, dict] = {}
 
     @classmethod
     def load(cls, artifacts_dir: Path) -> ArtifactRegistry:
@@ -86,6 +102,12 @@ class ArtifactRegistry:
                 continue
             for bundle_path in sorted(component_dir.glob("*.joblib")):
                 registry._load_modeled_bundle(component, bundle_path)
+
+        registry._load_prepared_tables()
+        for key, filename in _CONFIG_FILES.items():
+            registry._configs[key] = registry._read_json(
+                artifacts_dir / _CONFIG_DIR / filename
+            )
 
         if registry.is_empty:
             logger.warning(
@@ -163,6 +185,28 @@ class ArtifactRegistry:
 
             self._bundles[(commodity, "demand")] = metadata
 
+    def _load_prepared_tables(self) -> None:
+        """Read the committed feature tables and demand-pressure series from
+        ``prepared/``. Missing files are not an error — the matching component
+        just falls back to INSUFFICIENT_DATA downstream."""
+        prepared = self._artifacts_dir / _PREPARED_DIR
+        if not prepared.is_dir():
+            return
+
+        for commodity in COMMODITIES:
+            slug = slugify_commodity(commodity)
+            for component in _MODELED_COMPONENTS:
+                frame = self._read_csv(prepared / f"{slug}_{component}_features.csv")
+                if frame is not None:
+                    self._feature_tables[(commodity, component)] = frame
+
+        observed = self._read_csv(prepared / _DEMAND_PRESSURE_OBSERVED)
+        if observed is not None:
+            self._demand_observed = observed
+        forecast = self._read_csv(prepared / _DEMAND_PRESSURE_FORECAST)
+        if forecast is not None:
+            self._demand_forecast = forecast
+
     def _read_json(self, path: Path) -> dict:
         try:
             return json.loads(path.read_text())
@@ -173,11 +217,47 @@ class ArtifactRegistry:
             self._diagnostics.append(f"config: failed to read {path.name}")
             return {}
 
+    def _read_csv(self, path: Path) -> pd.DataFrame | None:
+        if not path.is_file():
+            return None
+        try:
+            parse_dates = ["date"] if "date" in _csv_header(path) else None
+            return pd.read_csv(path, parse_dates=parse_dates)
+        except (OSError, ValueError, pd.errors.ParserError):
+            logger.warning("failed to read prepared table %s; ignoring", path, exc_info=True)
+            self._diagnostics.append(f"prepared: failed to read {path.name}")
+            return None
+
     def has(self, commodity: str, component: str) -> bool:
         return (commodity, component) in self._bundles
 
     def get(self, commodity: str, component: str) -> ArtifactMetadata | None:
         return self._bundles.get((commodity, component))
+
+    def feature_table(self, commodity: str, component: str) -> pd.DataFrame | None:
+        """The `prepared/{commodity}_{component}_features.csv` frame, or None."""
+        frame = self._feature_tables.get((commodity, component))
+        return frame.copy() if frame is not None else None
+
+    @property
+    def demand_pressure_observed(self) -> pd.DataFrame:
+        """`prepared/quarterly_demand_pressure_index.csv` (empty frame if absent)."""
+        return self._demand_observed.copy()
+
+    @property
+    def demand_pressure_forecast(self) -> pd.DataFrame:
+        """`prepared/future_demand_pressure_3q.csv` (empty frame if absent)."""
+        return self._demand_forecast.copy()
+
+    @property
+    def opportunity_config(self) -> dict:
+        """`config/opportunity_scoring_config.json` ({} if absent)."""
+        return self._configs.get("opportunity_scoring", {})
+
+    @property
+    def commodity_flow_methodology(self) -> dict:
+        """`config/commodity_flow_methodology.json` ({} if absent)."""
+        return self._configs.get("commodity_flow", {})
 
     @property
     def is_empty(self) -> bool:
@@ -187,3 +267,8 @@ class ArtifactRegistry:
     def diagnostics(self) -> list[str]:
         """Human-readable notes about artifacts that were expected but skipped."""
         return list(self._diagnostics)
+
+
+def _csv_header(path: Path) -> list[str]:
+    with path.open("r", encoding="utf-8") as handle:
+        return handle.readline().strip().split(",")

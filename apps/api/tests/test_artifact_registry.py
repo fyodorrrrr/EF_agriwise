@@ -140,6 +140,53 @@ def test_demand_bundles_resolve_through_the_demand_registry_config(tmp_path):
     assert tomato.model_id == red_onion.model_id == "vegetable_shared-demand-v1"
 
 
+def _write_csv(path: Path, header: str, *rows: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join([header, *rows]) + "\n")
+
+
+def test_load_reads_prepared_tables_demand_pressure_and_configs(tmp_path):
+    _write_csv(
+        tmp_path / "prepared" / "rice_supply_features.csv",
+        "geolocation,date,target,lag_4",
+        "Laguna,2026-01-01,100.0,90.0",
+        "Laguna,2026-04-01,,95.0",
+    )
+    _write_csv(
+        tmp_path / "prepared" / "quarterly_demand_pressure_index.csv",
+        "commodity,province,date,demand_pressure_index",
+        "rice,Laguna,2025-10-01,101.2",
+    )
+    _write_csv(
+        tmp_path / "prepared" / "future_demand_pressure_3q.csv",
+        "commodity,province,date,estimated_demand_pressure_index,confidence",
+        "rice,Laguna,2026-01-01,103.4,moderate_proxy",
+    )
+    (tmp_path / "config").mkdir(exist_ok=True)
+    (tmp_path / "config" / "opportunity_scoring_config.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "3.2",
+                "components": {"demand_pressure_index": {"weight": 0.35}},
+            }
+        )
+    )
+
+    registry = ArtifactRegistry.load(tmp_path)
+
+    supply = registry.feature_table("Rice", "supply")
+    assert supply is not None
+    assert list(supply.columns) == ["geolocation", "date", "target", "lag_4"]
+    assert supply["target"].isna().sum() == 1  # the future row
+
+    assert registry.feature_table("Banana", "price") is None  # not provided
+
+    assert len(registry.demand_pressure_observed) == 1
+    assert registry.demand_pressure_forecast.iloc[0]["confidence"] == "moderate_proxy"
+
+    assert registry.opportunity_config["components"]["demand_pressure_index"]["weight"] == 0.35
+
+
 @pytest.mark.skipif(
     not _COMMITTED_ARTIFACTS_DIR.is_dir(),
     reason="committed artifact bundles not present in this checkout",
