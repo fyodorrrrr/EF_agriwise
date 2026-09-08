@@ -1,0 +1,6 @@
+{
+  "status": "optional_external_indicator",
+  "use": "market opportunity / inflow-outflow context",
+  "warning": "Section II - Vegetable products is broad unless lower-level PSCC items are explicitly queried.",
+  "unit_policy": "convert source volume to metric tons only after confirming source unit metadata"
+}

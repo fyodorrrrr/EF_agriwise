@@ -1,54 +1,76 @@
-# Forecast-service artifact registry
+# `ml/artifacts/` — the forecast-service artifact bundle
 
-This directory holds the lightweight per-commodity model bundles consumed by
-`ml/forecasting/artifact_registry.py` at API startup, and served through
-`GET /forecast/outlook`.
+Loaded once at API startup by `ml/forecasting/artifact_registry.py`
+(`ArtifactRegistry.load`) and served through `GET /forecast/outlook` and
+`GET /forecast/evidence`. Schema version: **`3.2`** (stamped on every joblib
+bundle and on `config/opportunity_scoring_config.json`).
 
-**This is not the same thing as `ml/demand/artifacts/`.** Two unrelated
-model artifact stores currently exist in this repo:
-
-| | `ml/artifacts/` (this directory) | `ml/demand/artifacts/` |
-|---|---|---|
-| Format | `joblib`-pickled dict bundles (`{commodity}.joblib`) | Native XGBoost JSON boosters + separate feature/parameter manifest JSON files |
-| Consumed by | `ml/forecasting/artifact_registry.py` -> `ForecastService` -> `/forecast/outlook` | `ml/demand/pipeline/inference.py` (`ModelBInference`) -> the isolated Denton/spatial-reconciliation demand pipeline |
-| Covers | Demand, supply, and price components for all 4 commodities | Household-level FIES-LFS `BREAD`/`VEG` expenditure models only ("Model B") |
-| Produced by | `trainings_file/AgriWise_Complete_Modeling_V3_2.ipynb`'s final promotion cell (trains GradientBoosting/XGBoost/HistGB/RandomForest candidates, races them, then copies the winning bundles here with the schema below) | `ml/demand/pipeline/train_quarterly_101.py` / `train_vegetable_101.py` / `train_vegetable_129.py`, documented in depth in `ml/demand/README.md` and `ross'_work/review_bundle/` |
-| Validation style | Numeric verdict tiers (`USABLE_PROXY` / `INDICATIVE_PROXY` / `CAUTION` / `PASS` / `INSUFFICIENT_DATA`) based on weighted R2/WAPE/MASE | Structural fail-closed assertions (feature-manifest integrity, no leakage, finite/non-negative predictions) -- see `ml/demand/README.md` |
-
-If you're looking for the mature, heavily-audited FIES/LFS quarterly demand
-pipeline (Denton benchmarking, spatial reconciliation, provenance-recovered
-feature formulas), that lives in `ml/demand/` -- start with
-`ml/demand/README.md`, not here.
+> **Not** the same as `ml/demand/`. That directory is the isolated FIES/LFS
+> reference pipeline (Denton benchmarking, spatial reconciliation) and is
+> **not** wired into the API. The demand series the API serves comes from
+> `prepared/*_demand_pressure*` in this directory.
 
 ## Layout
 
 ```text
 ml/artifacts/
-  demand/{rice,tomato,red_onion,banana}.joblib
-  supply/{rice,tomato,red_onion,banana}.joblib   (one per commodity with sufficient data)
-  price/{rice,tomato,red_onion,banana}.joblib    (one per commodity with sufficient data)
+  demand/
+    rice.joblib              # BREAD  cross-sectional 2023 FIES expenditure estimator
+    vegetable_shared.joblib  # VEG    backs BOTH Tomato and Red Onion
+    banana.joblib            # FRUIT
+  supply/
+    {commodity_slug}.joblib  # fitted Pipeline (or model=None for seasonal-naive)
+  price/
+    {commodity_slug}.joblib
+  prepared/
+    {slug}_supply_features.csv    # observed target + pre-engineered future rows
+    {slug}_price_features.csv
+    {slug}_price_panel.csv        # thin observed-only view (unused by the API)
+    quarterly_demand_pressure_index.csv   # observed demand index, 4x5 provinces
+    future_demand_pressure_3q.csv         # 3 forecast quarters + confidence
+    lfs_calabarzon_activity_{monthly,quarterly}.csv
+    demand_proxy_province_baseline.csv
+  config/
+    commodity_demand_registry.json   # commodity -> demand artifact / target / label
+    opportunity_scoring_config.json   # Sprint 2b component weights + policy
+    commodity_flow_methodology.json
+  reports/
+    {supply,price}_deployment_verdicts.csv   # verdict + metrics, ALL 4 commodities
+    {supply,price,demand_proxy}_model_metrics.csv  # incl. seasonal-naive baselines
+    demand_validation_summary.csv
+    unified_deployment_summary.csv
+    {rice,vegetable_shared,banana}_validation_report.md
+    methodology_registry.json
+    dataset_inventory.csv            # the (external, uncommitted) raw sources
 ```
 
-Each bundle is a `joblib.dump()`'d dict with, at minimum, `commodity`
-(Title Case, matching `ml/forecasting/domain.py::COMMODITIES` exactly),
-`model_id`, `verdict`, `metrics`, and `limitations` -- see
-`ml/forecasting/artifact_registry.py` for the exact contract and
-`apps/api/tests/test_artifact_registry.py` for a worked example.
+`commodity_slug` = the commodity lowercased with spaces as underscores
+(`Red Onion` -> `red_onion`).
 
-The `demand/tomato.joblib` and `demand/red_onion.joblib` bundles are two
-separate files sharing one trained model (FIES does not distinguish the two
-commodities in its `VEG` expenditure category), not an alias -- the registry
-keys strictly on the `commodity` field inside each file.
+## How the registry uses it
+
+| Need | Source |
+|---|---|
+| demand verdict / metrics / label / `province_holdout` | `demand/*.joblib` resolved via `config/commodity_demand_registry.json` |
+| demand observed + forecast values | `prepared/quarterly_demand_pressure_index.csv` + `future_demand_pressure_3q.csv` — **never the joblib at request time** |
+| supply / price verdict + metrics | `{component}/{slug}.joblib` if present, else the `reports/{component}_deployment_verdicts.csv` row |
+| supply / price observed + forecast values | `prepared/{slug}_{component}_features.csv`: observed `target`, then `model.predict()` on the future rows when a joblib model exists, else the `lag_4` / `lag_12` column (seasonal-naive) |
+| opportunity config (Sprint 2b) | `config/opportunity_scoring_config.json` |
+| `/forecast/evidence`, `/forecast/methodology` | `reports/*` + `config/commodity_flow_methodology.json` |
+
+A missing file is never fatal — the affected component falls back to
+`INSUFFICIENT_DATA` and the reason is recorded in `registry.diagnostics`.
+`ArtifactRegistry.load(..., strict=True)` turns a schema-version mismatch into
+an `ArtifactSchemaError` (used by CI / tests).
 
 ## Regenerating
 
-Run `trainings_file/AgriWise_Complete_Modeling_V3_2.ipynb` end to end from
-the **same Python environment `EF_agriwise` runs on** (its `.venv`, via an
-`ipykernel` registered against it) -- joblib-pickled sklearn/XGBoost
-estimators are not guaranteed compatible across differing scikit-learn/numpy
-versions, and a mismatched environment will make bundles here fail to load
-silently (`ArtifactRegistry` treats a broken bundle as simply absent, logging
-a warning rather than raising). The notebook's final cell detects this
-`EF_agriwise` checkout automatically (as a sibling of `trainings_file/`) and
-promotes bundles here; it skips gracefully with a printed message if
-`EF_agriwise` isn't found.
+The joblib bundles, `prepared/` tables, and `reports/` are produced **offline**
+by the training notebook (external to this repo) and its promotion step. The
+API does no feature engineering or model training at request time — it reads
+these committed files. When models are retrained, re-promote the whole
+`ml/artifacts/` tree together so verdicts, metrics, and feature tables stay
+consistent.
+
+Raw PSA / FIES-LFS sources (listed in `reports/dataset_inventory.csv`) are
+large and stay **out of the repo**.

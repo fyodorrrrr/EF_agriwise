@@ -33,7 +33,9 @@ def test_outlook_reports_insufficient_data_for_every_component_without_artifacts
     )
     isolated_client = TestClient(app)
 
-    response = isolated_client.get("/forecast/outlook", params={"commodity": "Rice", "province": "Laguna"})
+    response = isolated_client.get(
+        "/forecast/outlook", params={"commodity": "Rice", "province": "Laguna"}
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -42,7 +44,8 @@ def test_outlook_reports_insufficient_data_for_every_component_without_artifacts
     assert "province-resolution" in body["resolution_note"]
     for component in ("demand", "supply", "price"):
         assert body[component]["verdict"] == "INSUFFICIENT_DATA"
-        assert body[component]["values"] is None
+        assert body[component]["observed"] is None
+        assert body[component]["forecast"] is None
     assert body["opportunity"]["verdict"] == "INSUFFICIENT_DATA"
     assert body["opportunity"]["score"] is None
 
@@ -66,3 +69,22 @@ def test_outlook_rejects_unknown_commodity():
     response = client.get("/forecast/outlook", params={"commodity": "Mango", "province": "Laguna"})
 
     assert response.status_code == 422
+
+
+def test_evidence_returns_a_component_per_commodity_and_kind():
+    response = client.get("/forecast/evidence")
+
+    assert response.status_code == 200
+    components = response.json()["components"]
+    assert len(components) == 12
+    keys = {(c["commodity"], c["component"]) for c in components}
+    assert ("Rice", "demand") in keys and ("Banana", "price") in keys
+    for c in components:
+        assert c["verdict"] in {
+            "PASS",
+            "CAUTION",
+            "INSUFFICIENT_DATA",
+            "USABLE_PROXY",
+            "INDICATIVE_PROXY",
+        }
+        assert c["province_resolution"] == "province"

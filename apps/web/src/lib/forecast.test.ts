@@ -29,9 +29,9 @@ describe("getOutlook", () => {
       commodity: "Red Onion",
       province: "Cavite",
       resolution_note: "Analytics are province-resolution.",
-      demand: { verdict: "INSUFFICIENT_DATA", values: null, limitations: [] },
-      supply: { verdict: "INSUFFICIENT_DATA", values: null, limitations: [] },
-      price: { verdict: "INSUFFICIENT_DATA", values: null, limitations: [] },
+      demand: { verdict: "INSUFFICIENT_DATA", observed: null, forecast: null, limitations: [], metrics: {} },
+      supply: { verdict: "INSUFFICIENT_DATA", observed: null, forecast: null, limitations: [], metrics: {} },
+      price: { verdict: "INSUFFICIENT_DATA", observed: null, forecast: null, limitations: [], metrics: {} },
       opportunity: { verdict: "INSUFFICIENT_DATA", score: null, classification: null },
     };
     const fetchMock = vi
