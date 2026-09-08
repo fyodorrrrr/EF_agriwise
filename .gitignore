@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# RAG / derived data (rebuilt from data/raw via the ingest script)
+data/processed/*
+!data/processed/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
