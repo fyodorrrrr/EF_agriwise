@@ -13,9 +13,11 @@ from app.config import get_settings
 
 if TYPE_CHECKING:
     from app.config import Settings
+    from ml.forecasting.forecast_service import ForecastService
     from rag.pipeline import RagPipeline
 
 logger = logging.getLogger("agriwise.rag")
+forecast_logger = logging.getLogger("agriwise.forecast")
 
 
 def _build_rag_pipeline(settings: Settings) -> RagPipeline | None:
@@ -46,6 +48,33 @@ def _build_rag_pipeline(settings: Settings) -> RagPipeline | None:
         return None
 
 
+def _build_forecast_service(settings: Settings) -> ForecastService:
+    """Build the forecast service from the cached artifact registry.
+
+    Unlike `_build_rag_pipeline`, this cannot fail into `None`: an empty
+    registry (no artifacts present) is still a valid service that answers
+    every `/forecast/outlook` component with INSUFFICIENT_DATA, so
+    `/forecast/*` never 503s the way `/rag/query` does on a missing index.
+    """
+    from pathlib import Path
+
+    from ml.forecasting.artifact_registry import ArtifactRegistry
+    from ml.forecasting.forecast_service import ForecastService
+
+    artifacts_dir = Path(settings.forecast_artifacts_dir)
+    try:
+        registry = ArtifactRegistry.load(artifacts_dir)
+    except Exception:
+        # Should be unreachable — ArtifactRegistry.load never raises — but
+        # fall back to an explicit empty registry rather than let startup fail.
+        forecast_logger.exception(
+            "unexpected error loading forecast artifacts from %s; using empty registry",
+            artifacts_dir,
+        )
+        registry = ArtifactRegistry(artifacts_dir)
+    return ForecastService(registry)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown hook.
@@ -54,6 +83,7 @@ async def lifespan(app: FastAPI):
     and attached to `app.state` so requests reuse a single cached instance.
     """
     app.state.rag_pipeline = _build_rag_pipeline(get_settings())
+    app.state.forecast_service = _build_forecast_service(get_settings())
     yield
 
 

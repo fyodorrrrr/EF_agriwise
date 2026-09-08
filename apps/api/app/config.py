@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     rag_index_dir: str = "data/processed/rag_index"
     rag_score_floor: float = 0.0
 
+    # Forecast artifact registry. Missing/empty directory is a valid state:
+    # the registry loads empty and every component reports INSUFFICIENT_DATA.
+    forecast_artifacts_dir: str = "ml/artifacts"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

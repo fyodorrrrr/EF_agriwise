@@ -12,6 +12,10 @@ dependencies = [
     "sentence-transformers>=5.0",
     "chromadb>=1.5",
     "groq>=1.6",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
 ]
 
 [dependency-groups]
@@ -27,7 +31,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["rag", "apps/api/app"]
+packages = ["rag", "apps/api/app", "ml"]
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests", "rag/tests"]
@@ -42,4 +46,4 @@ extend-exclude = [".venv", "apps/web"]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "rag"]
+known-first-party = ["app", "rag", "ml"]
