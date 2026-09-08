@@ -32,7 +32,14 @@ describe("getOutlook", () => {
       demand: { verdict: "INSUFFICIENT_DATA", observed: null, forecast: null, limitations: [], metrics: {} },
       supply: { verdict: "INSUFFICIENT_DATA", observed: null, forecast: null, limitations: [], metrics: {} },
       price: { verdict: "INSUFFICIENT_DATA", observed: null, forecast: null, limitations: [], metrics: {} },
-      opportunity: { verdict: "INSUFFICIENT_DATA", score: null, classification: null },
+      opportunity: {
+        verdict: "INSUFFICIENT_DATA",
+        score: null,
+        classification: null,
+        shared_quarter: null,
+        breakdown: {},
+        weights_used: {},
+      },
     };
     const fetchMock = vi
       .fn()

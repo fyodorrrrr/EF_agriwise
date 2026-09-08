@@ -42,10 +42,19 @@ export interface OutlookComponent {
   metrics: Record<string, number>;
 }
 
+export interface OpportunityBreakdownEntry {
+  raw: number;
+  score: number;
+  weight: number;
+}
+
 export interface OpportunityComponent {
   verdict: Verdict;
   score: number | null;
   classification: string | null;
+  shared_quarter: string | null;
+  breakdown: Record<string, OpportunityBreakdownEntry>;
+  weights_used: Record<string, number>;
 }
 
 export interface OutlookResponse {

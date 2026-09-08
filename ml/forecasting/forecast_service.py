@@ -13,6 +13,9 @@ import pandas as pd
 
 from ml.forecasting.artifact_registry import ArtifactRegistry, slugify_commodity
 from ml.forecasting.domain import COMMODITIES, COMPONENTS, PROVINCES
+from ml.forecasting.opportunity import OpportunityScorer
+
+_CONFIDENCE_SCORE = {"HIGH": 100.0, "MODERATE": 60.0, "NONE": 0.0}
 
 INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
 
@@ -67,6 +70,9 @@ class OpportunityPayload:
     verdict: str
     score: float | None = None
     classification: str | None = None
+    shared_quarter: str | None = None
+    breakdown: dict = field(default_factory=dict)
+    weights_used: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -141,7 +147,7 @@ class ForecastService:
             demand=demand,
             supply=supply,
             price=price,
-            opportunity=_insufficient_opportunity(),  # Sprint 2b
+            opportunity=self._opportunity(commodity, province),
         )
 
     # -- demand ----------------------------------------------------------
@@ -258,6 +264,50 @@ class ForecastService:
         naive = future_rows[future_rows[lag_col].notna()]
         return _points(naive, lag_col), "seasonal_naive"
 
+    # -- opportunity --------------------------------------------------
+
+    def _opportunity(self, commodity: str, province: str) -> OpportunityPayload:
+        scorer = OpportunityScorer(self._registry.opportunity_config)
+
+        per_province: dict[str, dict] = {}
+        for prov in PROVINCES:
+            demand = self._demand_component(commodity, prov)
+            supply = self._series_component(commodity, "supply", prov)
+            price = self._series_component(commodity, "price", prov)
+            if INSUFFICIENT_DATA in (demand.verdict, supply.verdict, price.verdict):
+                return _insufficient_opportunity()
+            per_province[prov] = {
+                "demand": _quarterly(demand),
+                "supply": _quarterly(supply),
+                "price": _quarterly(price, monthly=True),
+                "confidence": _mean_confidence(demand, supply, price),
+            }
+
+        shared = _shared_quarter(per_province)
+        if shared is None:
+            return _insufficient_opportunity()
+
+        peers = {
+            prov: {
+                "demand": maps["demand"].get(shared),
+                "supply": maps["supply"].get(shared),
+                "price": maps["price"].get(shared),
+                "confidence": maps["confidence"],
+            }
+            for prov, maps in per_province.items()
+        }
+        result = scorer.score(province, peers)
+        if result.score is None:
+            return _insufficient_opportunity()
+        return OpportunityPayload(
+            verdict=result.verdict,
+            score=result.score,
+            classification=result.classification,
+            shared_quarter=shared,
+            breakdown=result.breakdown,
+            weights_used=result.weights_used,
+        )
+
     # -- evidence ------------------------------------------------------
 
     def evidence(self) -> list[EvidenceComponentPayload]:
@@ -320,6 +370,40 @@ class ForecastService:
         row = rows.iloc[0].to_dict()
         keys = ("sMAPE", "MASE", "WAPE", "RMSE")
         return {k: float(row[k]) for k in keys if k in row and pd.notna(row[k])}
+
+
+def _quarter_start(period: str) -> str:
+    ts = pd.Timestamp(period)
+    return f"{ts.year:04d}-{((ts.month - 1) // 3) * 3 + 1:02d}-01"
+
+
+def _quarterly(component: OutlookComponentPayload, *, monthly: bool = False) -> dict[str, float]:
+    """{quarter-start ISO date -> value}. Monthly series (price) average the
+    months that fall in each quarter."""
+    points = (component.observed or []) + (component.forecast or [])
+    if not monthly:
+        return {p["period"]: float(p["value"]) for p in points}
+    buckets: dict[str, list[float]] = {}
+    for p in points:
+        buckets.setdefault(_quarter_start(p["period"]), []).append(float(p["value"]))
+    return {q: sum(v) / len(v) for q, v in buckets.items()}
+
+
+def _mean_confidence(*components: OutlookComponentPayload) -> float:
+    scores = [_CONFIDENCE_SCORE.get(c.confidence or "NONE", 0.0) for c in components]
+    return sum(scores) / len(scores) if scores else 0.0
+
+
+def _shared_quarter(per_province: dict[str, dict]) -> str | None:
+    """Most recent quarter present in demand, supply, and price for every
+    province."""
+    common: set[str] | None = None
+    for maps in per_province.values():
+        quarters = set(maps["demand"]) & set(maps["supply"]) & set(maps["price"])
+        common = quarters if common is None else (common & quarters)
+    if not common:
+        return None
+    return max(common)
 
 
 def _filter(frame: pd.DataFrame, slug: str, province: str) -> pd.DataFrame:

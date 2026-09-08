@@ -1,10 +1,5 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { DashboardClient } from "./DashboardClient";
 
 export default function Home() {
-  return (
-    <ComingSoon
-      title="Dashboard"
-      description="Province-resolution demand, supply, price, and opportunity analytics for CALABARZON agriculture."
-    />
-  );
+  return <DashboardClient />;
 }

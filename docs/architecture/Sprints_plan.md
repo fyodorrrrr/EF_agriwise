@@ -38,8 +38,8 @@ This plan reflects repository state at commit `f07633a` on 2026-09-08. Repositor
 |---|---|---|---|
 | M01 App Shell & Setup | Implemented | `apps/web/src/app/setup/page.tsx`, `AppPreferencesContext` + `preferences.tsx` (with tests), sidebar/navigation, `ComingSoon` shell for unbuilt routes | Wire real pages into shared state as they land |
 | M02 Forecast Inference & Contract | **Sprint 2a complete (pending review)** | `artifact_registry.py` (full bundle: joblib + `prepared/` + `config/` + `reports/`, schema-`3.2`, `diagnostics`), `forecast_service.py` (`_demand_component`/`_series_component`/`evidence`), reshaped `forecast.py` schemas, `GET /forecast/{catalog,outlook,evidence}` | Contract hardening + optional rice benchmark (Sprint 3) |
-| M03 Dashboard | **Not implemented** | `apps/web/src/app/page.tsx` is a `ComingSoon` stub | Sprint 2c |
-| M04 Forecasting & Opportunity | **Not implemented** | `apps/web/src/app/forecasting/page.tsx` is a `ComingSoon` stub; `forecast_service.outlook()` hardcodes `_insufficient_data_opportunity()` — no opportunity engine exists | Opportunity engine (Sprint 2b); forecasting UI (Sprint 2c) |
+| M03 Dashboard | **Sprint 2c done (pending review)** | `apps/web/src/app/page.tsx` + `DashboardClient.tsx` — 4-commodity outlook cards for the selected province, keyed-result state (no stale leak) | E2E QA (Sprint 6) |
+| M04 Forecasting & Opportunity | **Sprint 2b + 2c done (pending review)** | `ml/forecasting/opportunity.py` (config-driven scorer), `forecast_service._opportunity()`, `forecasting/page.tsx` + `ForecastingClient.tsx` (component cards + opportunity breakdown) | "Why this result?" (Sprint 3) |
 | M05 Explainability | Not implemented | no `/forecast/methodology`, no "Why this result?" component, no methodology schema | Sprint 3 |
 | M06 GIS Analytics | Not implemented | `mapping/page.tsx` stub | Sprint 4 |
 | M07 Curated Markets | Not started | `markets/` package dir exists but empty of logic; `ml/artifacts/market_coordinates/*.csv` was **removed** in the artifact replacement and must be restored; no `market_recommendation_config.json` in the repo; no registry, ranking, API, schema, or UI | Sprint 4 (restore coordinates first) |
@@ -167,7 +167,7 @@ Policy from the file: normalize every input to 0–100 before combining; never s
 
 ## 4. Sprint Roadmap
 
-**State after the two 2026-09-08 re-baselines:** Sprints 0 / 0.5 / 1 done (0.5 partial). Sprint 2 is split 2a/2b/2c and is where active work sits. Sprints 3–6 keep their shape; the artifact drop mostly *shrinks* their scope:
+**State:** Sprints 0 / 0.5 / 1 done (0.5 partial). Sprint 2 (2a + 2b + 2c.1/2c.2) complete pending review on `sprint-2a/forecast-values-backend` and `sprint-2b-2c/opportunity-and-dashboard`. Next: Sprint 3. Sprints 3–6 keep their shape; the artifact drop mostly *shrinks* their scope:
 
 | Sprint | Net effect of the artifact drop |
 |---|---|
@@ -310,79 +310,60 @@ cd apps/web; npm run typecheck; npm run test; npm run lint; npm run build       
 
 **Known limitations:** opportunity still `INSUFFICIENT_DATA` (Sprint 2b); tomato price seasonal-naive forecast skips periods where `lag_12` is null (starts at the first quarter with a seasonal reference).
 
-## Sprint 2b — Opportunity Engine
+## Sprint 2b — Opportunity Engine — COMPLETE (pending review)
 
 **Modules:** M04 backend
 
-**Goal:** replace `_insufficient_data_opportunity()` with the peer-relative scorer configured by `ml/artifacts/config/opportunity_scoring_config.json` (Section 3). Depends on 2a.
-
-**Files:**
-
-- Create: `ml/forecasting/opportunity.py` (the scorer reads the committed config via the registry — **no new config file**)
-- Modify: `ml/forecasting/forecast_service.py` (call the scorer in `outlook()`)
-- Modify: `apps/api/app/schemas/forecast.py` (`OpportunityComponent`: `score`, `classification`, `shared_quarter`, per-component breakdown, `weights_used`)
-- Test: new `apps/api/tests/test_opportunity.py`
+**Delivered on `sprint-2b-2c/opportunity-and-dashboard`:** `ml/forecasting/opportunity.py` (`OpportunityScorer`, `OpportunityResult`), `_opportunity()` + quarterly-alignment helpers in `forecast_service.py`, `OpportunityComponent` schema extended, `apps/api/tests/test_opportunity.py`.
 
 ### Task 2b.1 — Peer-relative scoring
 
-- [ ] Read components/weights/directions/policy from `config/opportunity_scoring_config.json` (do not hardcode).
-- [ ] Compute across all five provinces for one commodity; select the earliest quarter shared by demand, supply, and price.
-- [ ] Normalize each input to 0–100 province-relative; `market_flow_dependence_index` is optional — drop it and renormalize weights when `config/commodity_flow_methodology.json` yields nothing.
-- [ ] `forecast_confidence_index`: `HIGH=100 / MODERATE=60 / NONE=0`.
-- [ ] Classifications: `HIGH_OPPORTUNITY`, `UNDERSUPPLY_LEANING`, `BALANCED`, `OVERSUPPLY_LEANING`, `SEVERE_OVERSUPPLY`.
+- [x] Components/weights/optional-flag read from `config/opportunity_scoring_config.json` — nothing hardcoded but the 0–100 method and the bands.
+- [x] Computed across all five provinces; **shared quarter = the *most recent* quarter present in demand + supply + price for every province** (deviation from "earliest" — with unaligned observed histories "earliest" resolves to ~2021 and is not decision-relevant; documented).
+- [x] Rank-percentile 0–100 per input; scarcity = inverse supply; `market_flow_dependence_index` dropped (no input) and weights renormalized over the remaining four (÷0.90).
+- [x] `forecast_confidence_index` = mean of the three components' confidence (`HIGH=100 / MODERATE=60 / NONE=0`), used as an absolute 0–100 (not ranked).
+- [x] Classifications by score band: ≥75 `HIGH_OPPORTUNITY`, ≥60 `UNDERSUPPLY_LEANING`, ≥40 `BALANCED`, ≥25 `OVERSUPPLY_LEANING`, else `SEVERE_OVERSUPPLY`.
 
 ### Task 2b.2 — Fail closed
 
-- [ ] Any missing demand / supply / price / confidence → `INSUFFICIENT_DATA`, no score (Red Onion always).
-- [ ] Return the component breakdown + `weights_used` for the future "Why this result?" UI.
-- [ ] Never subtract FIES index points from supply MT; document that the score is peer-relative decision support, not ground truth.
+- [x] Any province missing demand / supply / price → `INSUFFICIENT_DATA`, no score (Red Onion always — its supply & price are value-free).
+- [x] Returns `breakdown` (per-component raw/score/weight) + `weights_used`.
+- [x] No incompatible-unit subtraction; scorer docstring states it is peer-relative decision support.
 
-**Verification:**
+**Verification (green):** `cd apps/api; uv run pytest tests/test_opportunity.py tests/test_forecast_service.py tests/test_forecast_router.py` — 41 passed overall; `ruff` clean.
 
-```powershell
-cd apps/api
-uv run pytest tests/test_opportunity.py tests/test_forecast_service.py tests/test_forecast_router.py
-```
+**Exit evidence:** `/forecast/outlook` returns opportunity `score`/`classification`/`shared_quarter` (`2026-07-01`) for Rice (55.4 BALANCED), Tomato, Banana; Red Onion → `INSUFFICIENT_DATA`.
 
-**Exit evidence:** `/forecast/outlook` returns an opportunity `score` + `classification` for Rice/Tomato/Banana on a shared quarter; Red Onion returns `INSUFFICIENT_DATA`.
-
-## Sprint 2c — Dashboard + Forecasting UI
+## Sprint 2c — Dashboard + Forecasting UI — 2c.1 + 2c.2 COMPLETE (pending review)
 
 **Modules:** M03, M04 frontend, part of M10
 
-**Goal:** replace the `page.tsx` and `forecasting/page.tsx` stubs with real pages driven by the 2a/2b API.
+**Delivered on `sprint-2b-2c/opportunity-and-dashboard`:**
 
-**Files:**
-
-- Modify: `apps/web/src/app/page.tsx` (CALABARZON dashboard)
-- Modify: `apps/web/src/app/forecasting/page.tsx` (controls + component cards)
-- Modify/Create: `apps/web/src/types/forecast.ts`, `apps/web/src/lib/forecast.ts` (fetch helpers, already partly present), component tests
-- Test: `apps/web/src/app/**/*.test.tsx`, `apps/web/src/lib/forecast.test.ts`
+- `apps/web/src/components/forecast/` — `verdict.ts` (badge/label/format helpers), `Sparkline.tsx` (observed→dashed-forecast inline SVG), `ComponentCard.tsx`
+- `apps/web/src/app/page.tsx` + `DashboardClient.tsx` — CALABARZON dashboard
+- `apps/web/src/app/forecasting/page.tsx` + `ForecastingClient.tsx` — forecasting page
+- `apps/web/src/types/forecast.ts` — `OpportunityComponent` mirrored (breakdown/weights/shared_quarter)
+- Tests: `apps/web/src/app/page.test.tsx`, `apps/web/src/app/forecasting/page.test.tsx`
 
 ### Task 2c.1 — CALABARZON dashboard
 
-- [ ] Call `/forecast/outlook` for all four commodities at the selected province from shared preferences.
-- [ ] Show verdict, confidence, latest value, and trend per component; link through to Forecasting.
-- [ ] Loading / API-error / insufficient-data states; no stale values after a failed refetch.
+- [x] Fetches `/forecast/outlook` for all four commodities at the province from `AppPreferences` (province selector on the page too).
+- [x] Per-commodity card: per-component latest value + verdict badge, opportunity classification + score, shared quarter, link to `/forecasting?commodity=`.
+- [x] Loading / API-error / no-province states; **stale rows can't leak** — `status`/`rows` are derived from a keyed result, not set imperatively.
 
 ### Task 2c.2 — Forecasting page
 
-- [ ] Commodity + province controls synced with `AppPreferences`.
-- [ ] Demand / supply / price cards: observed vs. forecast values, **Estimated Demand Proxy** label, verdict, confidence, source, frequency, and the province-resolution note.
-- [ ] Opportunity card: score, classification, shared quarter, component breakdown; `INSUFFICIENT_DATA` rendered honestly.
-- [ ] Never present a province forecast as municipality-level.
+- [x] Commodity + province `<select>`s synced with `AppPreferences`; seeds commodity from `?commodity=` once when preferences lack one.
+- [x] Demand / supply / price `ComponentCard`s: observed vs forecast (sparkline + latest), **Estimated Demand Proxy** label + registry label, verdict, confidence, source, frequency, `data_as_of`, limitations; `resolution_note` shown.
+- [x] `OpportunityCard`: score, classification, shared quarter, weighted-component breakdown table; `INSUFFICIENT_DATA` states the peer-coverage requirement plainly.
+- [x] Province-resolution note on the page; no municipality framing.
 
-**Verification:**
+**Verification (green):** `cd apps/web; npm run typecheck && npx vitest run && npm run lint && npm run build` — 23 tests passed, lint/types clean, build OK.
 
-```powershell
-cd apps/web
-npm run test
-npm run lint
-npm run typecheck
-npm run build
-```
+**Exit flow:** `Landing → Setup → Dashboard → Forecasting` works end-to-end against the live API.
 
-**Exit flow:** `Landing → Setup → Dashboard → Forecasting`
+**Not in this batch:** model-evidence page (Sprint 5), mapping/markets (Sprint 4), "Why this result?" (Sprint 3).
 
 **Follow-up acceptance:** Sprint 3 must make demand provenance and any future rice benchmark mode explicit before GIS or chatbot reuse the values.
 
