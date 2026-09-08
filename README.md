@@ -59,6 +59,26 @@ These rules bind the code and its contracts:
 | `POST /rag/query` | Chatbot query |
 | `/markets/*` | Curated market registry and ranking |
 
+## Running Locally
+
+Run each in its own terminal, both from the repo root:
+
+```powershell
+# Terminal 1 — backend (http://localhost:8000)
+uv run uvicorn app.main:app --reload
+
+# Terminal 2 — frontend (http://localhost:3000)
+npm --prefix apps/web run dev
+```
+
+First-time backend setup (see [`apps/api/README.md`](apps/api/README.md) for details):
+
+```powershell
+uv sync
+copy apps\api\.env.example apps\api\.env   # then set GROQ_API_KEY
+uv run python -m rag.ingest --rebuild      # build the RAG index
+```
+
 ## Development
 
 ```powershell

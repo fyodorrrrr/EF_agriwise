@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T00:00:00Z",
+  "title": "Design System: AgriWise",
+  "extensions": {
+    "colorMeta": {
+      "accent-500": {
+        "role": "primary",
+        "displayName": "Field Forest Green",
+        "canonical": "#4b7552",
+        "tonalRamp": ["#16241a", "#223727", "#2f4c35", "#3d6144", "#4b7552", "#7fa385", "#b0c8b3", "#eef3ee"]
+      },
+      "leaf-500": {
+        "role": "secondary",
+        "displayName": "Ripe Leaf Green",
+        "canonical": "#86a13c",
+        "tonalRamp": ["#283212", "#3d4c1c", "#556926", "#6d8530", "#86a13c", "#a9c26a", "#cbdb9f", "#f4f7ea"]
+      },
+      "warn-500": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "#b8811f",
+        "tonalRamp": ["#3a2907", "#553d0c", "#6f5010", "#855b12", "#b8811f", "#d6a94f", "#ecca8f", "#fbf1e2"]
+      },
+      "info-500": {
+        "role": "tertiary",
+        "displayName": "Proxy Blue",
+        "canonical": "#416d8f",
+        "tonalRamp": ["#16242f", "#1f3444", "#2f5069", "#3a637f", "#416d8f", "#6d94af", "#a6c0d2", "#eaf0f5"]
+      },
+      "danger-500": {
+        "role": "tertiary",
+        "displayName": "Insufficient Red",
+        "canonical": "#b23b2e",
+        "tonalRamp": ["#3a130f", "#551b15", "#7f2820", "#98332a", "#b23b2e", "#cf6d62", "#e6a89f", "#fbeeec"]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Paper Grey",
+        "canonical": "#f4f3f2",
+        "tonalRamp": ["#211f1d", "#3d3a37", "#5b5854", "#78746f", "#97938e", "#bcb8b4", "#dbd8d5", "#f7f6f5"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Warm Ink",
+        "canonical": "#171615",
+        "tonalRamp": ["#171615", "#201f1d", "#3d3a37", "#5b5854", "#78746f", "#97938e", "#bcb8b4", "#eceae8"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#3d3a37", "#5b5854", "#97938e", "#bcb8b4", "#dbd8d5", "#eceae8", "#f7f6f5", "#ffffff"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Top-level page <h1> only." },
+      "headline": { "displayName": "Headline", "purpose": "Section <h2> headers." },
+      "title": { "displayName": "Title", "purpose": "<h3> and the calm .page-head h1." },
+      "body": { "displayName": "Body", "purpose": "Default reading text, ~72ch max." },
+      "label": { "displayName": "Label / Kicker", "purpose": "Uppercase 11px micro-labels: card kickers, spec labels, disclosure sub-heads." },
+      "mono": { "displayName": "Mono", "purpose": "JetBrains Mono for figures and identifiers only — prices, MT, index values, quarters, model IDs." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 2px rgba(23, 22, 21, 0.05)", "purpose": "Resting elevation for cards, chips, secondary buttons, inputs, table wraps." },
+      { "name": "shadow-md", "value": "0 2px 6px rgba(23, 22, 21, 0.05), 0 8px 20px rgba(23, 22, 21, 0.05)", "purpose": "Hover response; resting state of the chat input-shell." },
+      { "name": "shadow-lg", "value": "0 8px 16px rgba(23, 22, 21, 0.06), 0 24px 56px rgba(23, 22, 21, 0.09)", "purpose": "Overlays and popovers; highest elevation, used sparingly." },
+      { "name": "focus-ring", "value": "0 0 0 3px #d5e2d6", "purpose": "Soft accent-200 outer ring on focused inputs and input-shell:focus-within." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "ease", "purpose": "Default easing for color/shadow/transform state transitions." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Buttons, chips, nav item hover." },
+      { "name": "duration-card", "value": "180ms", "purpose": "Card hover lift (shadow + translateY(-2px))." },
+      { "name": "spin", "value": "0.7s linear infinite", "purpose": "state-loading spinner." },
+      { "name": "pulse", "value": "1.4s ease-in-out infinite", "purpose": "skeleton opacity pulse." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "639px" },
+      { "name": "md", "value": "767px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "High-emphasis neutral action; warm ink fill.",
+      "html": "<button class=\"ds-btn-primary\">Run forecast</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); font-weight: 600; font-size: 14px; line-height: 1.2; color: #fff; background: #171615; border: 1px solid transparent; border-radius: 999px; padding: 10px 18px; cursor: pointer; transition: background-color .15s ease, box-shadow .15s ease; } .ds-btn-primary:hover { background: #2f2c29; } .ds-btn-primary:focus-visible { outline: 2px solid #4b7552; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: .45; cursor: not-allowed; }"
+    },
+    {
+      "name": "Accent Button",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "Affirmative primary action within a flow; the one green action color.",
+      "html": "<button class=\"ds-btn-accent\">Show recommendation</button>",
+      "css": ".ds-btn-accent { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); font-weight: 600; font-size: 14px; line-height: 1.2; color: #fff; background: #4b7552; border: 1px solid transparent; border-radius: 999px; padding: 10px 18px; cursor: pointer; transition: background-color .15s ease; } .ds-btn-accent:hover { background: #3d6144; } .ds-btn-accent:active { background: #2f4c35; } .ds-btn-accent:focus-visible { outline: 2px solid #4b7552; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Low-emphasis action; white pill that lifts on hover.",
+      "html": "<button class=\"ds-btn-secondary\">Export</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); font-weight: 600; font-size: 14px; line-height: 1.2; color: #201f1d; background: #fff; border: 1px solid transparent; border-radius: 999px; padding: 10px 18px; cursor: pointer; box-shadow: 0 1px 2px rgba(23,22,21,0.05); transition: background-color .15s ease, box-shadow .15s ease; } .ds-btn-secondary:hover { background: #f7f6f5; box-shadow: 0 2px 6px rgba(23,22,21,0.05), 0 8px 20px rgba(23,22,21,0.05); } .ds-btn-secondary:focus-visible { outline: 2px solid #4b7552; outline-offset: 2px; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Selectable single-axis filter (crop, province). Selects to Field Forest Green.",
+      "html": "<div style=\"display:flex;gap:8px;flex-wrap:wrap\"><button class=\"ds-chip\" aria-pressed=\"true\">Rice</button><button class=\"ds-chip\" aria-pressed=\"false\">Tomato</button><button class=\"ds-chip\" aria-pressed=\"false\">Red Onion</button></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); font-weight: 600; font-size: 14px; line-height: 1.2; color: #201f1d; background: #fff; border: 1px solid transparent; border-radius: 999px; padding: 7px 16px; cursor: pointer; box-shadow: 0 1px 2px rgba(23,22,21,0.05); transition: background-color .15s ease, box-shadow .15s ease, color .15s ease; } .ds-chip:hover { background: #f7f6f5; box-shadow: 0 2px 6px rgba(23,22,21,0.05), 0 8px 20px rgba(23,22,21,0.05); } .ds-chip[aria-pressed='true'] { background: #4b7552; color: #fff; box-shadow: none; } .ds-chip[aria-pressed='true']:hover { background: #3d6144; } .ds-chip:focus-visible { outline: 2px solid #4b7552; outline-offset: 2px; }"
+    },
+    {
+      "name": "Component Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The core analytics surface: kicker, title, body, foot. Optionally hoverable/selectable.",
+      "html": "<article class=\"ds-card\"><span class=\"ds-card-kicker\">Supply</span><h3 class=\"ds-card-title\">Laguna · Rice</h3><p class=\"ds-card-body\">Forecast quarter trending above the seasonal-naive baseline.</p><div class=\"ds-card-foot\"><span class=\"ds-badge-leaf\">Pass</span></div></article>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 8px; padding: 24px; border-radius: 20px; background: #fff; box-shadow: 0 1px 2px rgba(23,22,21,0.05); transition: box-shadow .18s ease, transform .18s ease; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); } .ds-card:hover { box-shadow: 0 2px 6px rgba(23,22,21,0.05), 0 8px 20px rgba(23,22,21,0.05); transform: translateY(-2px); } .ds-card-kicker { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #4b7552; } .ds-card-title { margin: 0; font-weight: 700; font-size: 17px; line-height: 1.25; color: #201f1d; } .ds-card-body { margin: 0; font-size: 14px; color: #6f6c68; } .ds-card-foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid #eae8e5; } .ds-badge-leaf { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: #f4f7ea; color: #3d4c1c; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard field with stacked label and soft double-ring focus.",
+      "html": "<label class=\"ds-field\"><span>Province</span><input class=\"ds-input\" placeholder=\"Select a province\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); } .ds-field > span { font-size: 14px; font-weight: 500; color: #6f6c68; } .ds-input { width: 100%; min-height: 42px; padding: 10px 14px; font: inherit; font-size: 14px; color: #201f1d; caret-color: #4b7552; background: #fff; border: 1px solid #e6e4e1; border-radius: 12px; box-shadow: 0 1px 2px rgba(23,22,21,0.05); } .ds-input::placeholder { color: #6f6c68; } .ds-input:hover { border-color: #dbd8d5; } .ds-input:focus-visible { border-color: #4b7552; outline: 3px solid #d5e2d6; outline-offset: 0; } .ds-input[aria-invalid='true'] { border-color: #b23b2e; }"
+    },
+    {
+      "name": "Chat Input Shell",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The 'Ask AgriWise' bar: a pill holding a borderless field plus a send button.",
+      "html": "<div class=\"ds-input-shell\"><input class=\"ds-input-bare\" placeholder=\"Ask about this province…\" /><button class=\"ds-send\" aria-label=\"Send\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/></svg></button></div>",
+      "css": ".ds-input-shell { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 8px; background: #fff; border-radius: 999px; box-shadow: 0 2px 6px rgba(23,22,21,0.05), 0 8px 20px rgba(23,22,21,0.05); font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); } .ds-input-shell:focus-within { box-shadow: 0 2px 6px rgba(23,22,21,0.05), 0 8px 20px rgba(23,22,21,0.05), 0 0 0 3px #d5e2d6; } .ds-input-bare { flex: 1; min-width: 0; border: 0; outline: none; background: none; padding: 8px 10px; font: inherit; font-size: 14px; color: #201f1d; } .ds-input-bare::placeholder { color: #6f6c68; } .ds-send { width: 36px; height: 36px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: #4b7552; color: #fff; cursor: pointer; } .ds-send:hover { background: #3d6144; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "sidenav-item",
+      "description": "Primary navigation row; active state is a solid green pill.",
+      "html": "<nav style=\"display:flex;flex-direction:column;gap:4px;width:200px\"><a class=\"ds-nav\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 3v18h18\"/><path d=\"m19 9-5 5-4-4-3 3\"/></svg><span>Forecasting</span></a><a class=\"ds-nav\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 21s-6-5.686-6-10a6 6 0 0 1 12 0c0 4.314-6 10-6 10Z\"/><circle cx=\"12\" cy=\"11\" r=\"2\"/></svg><span>Mapping</span></a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 999px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); font-size: 14px; font-weight: 500; color: #5b5854; text-decoration: none; cursor: pointer; transition: background-color .15s ease, color .15s ease; } .ds-nav svg { color: #78746f; transition: color .15s ease; } .ds-nav:hover { background: #eef3ee; color: #2f4c35; } .ds-nav:hover svg { color: currentColor; } .ds-nav[aria-current='page'] { background: #4b7552; color: #fff; } .ds-nav[aria-current='page'] svg { color: currentColor; }"
+    },
+    {
+      "name": "Verdict Badge",
+      "kind": "chip",
+      "refersTo": "badge-accent",
+      "description": "One-color-per-meaning status pill. Leaf=Pass, neutral=Insufficient data, warn=Caution, info=Usable proxy.",
+      "html": "<div style=\"display:flex;gap:8px;flex-wrap:wrap\"><span class=\"ds-b ds-b-leaf\">Pass</span><span class=\"ds-b ds-b-warn\">Caution</span><span class=\"ds-b ds-b-info\">Usable proxy</span><span class=\"ds-b ds-b-neutral\">Insufficient data</span></div>",
+      "css": ".ds-b { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-jakarta, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif); font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; } .ds-b-leaf { background: #f4f7ea; color: #3d4c1c; } .ds-b-warn { background: #fbf1e2; color: #855b12; } .ds-b-info { background: #eaf0f5; color: #2f5069; } .ds-b-neutral { background: #eceae8; color: #3d3a37; }"
+    },
+    {
+      "name": "Score Meter",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Opportunity / confidence score bar with a label row; Field Forest Green fill on a neutral track.",
+      "html": "<div style=\"font-family:var(--font-jakarta,'Plus Jakarta Sans',ui-sans-serif,system-ui,sans-serif);max-width:280px\"><div class=\"ds-meter-row\"><span>Opportunity</span><span>62 / 100</span></div><div class=\"ds-meter\"><span style=\"width:62%\"></span></div></div>",
+      "css": ".ds-meter-row { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; color: #6f6c68; margin-bottom: 5px; } .ds-meter { height: 6px; border-radius: 999px; background: #eceae8; overflow: hidden; } .ds-meter > span { display: block; height: 100%; border-radius: inherit; background: #4b7552; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Extension Officer's Desk",
+    "overview": "AgriWise looks like the workspace of a good agricultural extension officer: plain-spoken, field-ready, and built to be trusted. One farmer opens it on a slow phone to decide what to plant; one LGU planner opens it to read the evidence behind that same number. The interface has to serve both without changing its voice — so it stays warm and reassuring on the surface, with the rigor kept one tap away rather than in your face.\n\nThe world is light-theme only, set on warm paper-grey (#f4f3f2) rather than clinical white, with near-black warm ink for text. Green is the only chromatic voice: a muted Field Forest Green for everything interactive and authoritative, a warmer Ripe Leaf Green for 'this passed.' The three status hues (amber, blue, red) are the sole non-greens and they only ever carry meaning. Type is a single humanist sans (Plus Jakarta Sans) doing all the work, with JetBrains Mono reserved for figures and identifiers. Corners are generous, controls are fully rounded pills, and shadows are so faint they read as a lift of the paper, not a drop.\n\nConfirmed anti-reference: this is not a 'data platform' dashboard. No dark chrome, no neon accents on black, no dense gridlined tables trying to look like a trading terminal, no decorative gradients. Restraint is the point.",
+    "keyCharacteristics": [
+      "Warm paper-grey ground, never pure-white page",
+      "A single green voice for action; status colors carry meaning only",
+      "One humanist sans for everything; mono only for numbers and IDs",
+      "Fully-pill buttons and chips; generously rounded cards (20px)",
+      "Depth from tonal surfaces first, faint shadow second",
+      "Every state — loading, empty, error, insufficient-data — is a designed component",
+      "Mobile: the side rail becomes a fixed bottom tab bar; touch targets grow to 44px"
+    ],
+    "rules": [
+      { "name": "The One Green Rule", "body": "There is exactly one action color. If a control does something, it is Field Forest Green or it is ink; it is never Ripe Leaf Green. Leaf green only ever means 'passed.'", "section": "colors" },
+      { "name": "The Meaning-Never-Decoration Rule", "body": "Amber, blue, and red appear only to carry a verdict, notice, or error state. They are never used for emphasis, theming, or visual interest.", "section": "colors" },
+      { "name": "The Grey Gap Rule", "body": "INSUFFICIENT_DATA renders in neutral grey (badge-neutral), never in red or amber. The product is honest about missing data without dramatizing it.", "section": "colors" },
+      { "name": "The Fixed-Dense Rule", "body": "Display sizes are fluid (clamp); UI and data sizes (xs–md, 12–17px) are fixed pixels. A data table must not shrink on a small screen — it scrolls instead.", "section": "typography" },
+      { "name": "The Mono-For-Numbers Rule", "body": "JetBrains Mono is for values and identifiers only — prices, MT figures, index numbers, quarter labels, model names. Never set prose or labels in mono.", "section": "typography" },
+      { "name": "The Paper-Lift Rule", "body": "Shadows never exceed the lg scale and never darken past ~9%. Depth is a whisper. If something needs to feel separated, change its surface tone or add a border before you reach for a bigger shadow.", "section": "elevation" },
+      { "name": "The Hover-Deepens Rule", "body": "Interactive surfaces rest at shadow-sm and move to shadow-md + a -2px translate on hover. Selection is shown with an inset 2px accent-400 ring (card-selected), not a heavier shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do set pages on ground (#f4f3f2) and raise content onto white surface cards.",
+      "Do use Field Forest Green (accent-500) as the only action/selection color; use ink (#171615) for the neutral high-emphasis button.",
+      "Do reserve Ripe Leaf Green strictly for PASS, and render INSUFFICIENT_DATA in neutral grey.",
+      "Do keep buttons, chips, badges, and nav items fully pill-shaped (999px).",
+      "Do set every price, tonnage, index value, quarter, and model ID in JetBrains Mono.",
+      "Do give loading, empty, error, and insufficient-data their designed components on every view.",
+      "Do show forecast series as a dashed continuation of a solid observed line.",
+      "Do grow controls to >=44px and inputs to 16px under (hover: none).",
+      "Do keep the :focus-visible accent outline (2px accent-500, 2px offset) intact."
+    ],
+    "donts": [
+      "Don't introduce a dark theme, dark chrome, or a pure-white (#fff) page background.",
+      "Don't use amber, blue, or red for anything but a verdict, notice, or error — never for emphasis or decoration.",
+      "Don't put Ripe Leaf Green on a button or use it as a general 'good' accent.",
+      "Don't add gradients (except the defined choropleth value ramp), glows, or shadows heavier than shadow-lg / ~9% opacity.",
+      "Don't set prose or labels in mono, or shrink data tables below their fixed sizes — scroll them.",
+      "Don't add a second accent hue or theme color; the palette is one green plus warm neutrals plus meaning-only status.",
+      "Don't present a municipality-level or physical-MT figure as if the design implies a precision the data lacks — the honest-labeling conventions are product, not decoration."
+    ]
+  }
+}
