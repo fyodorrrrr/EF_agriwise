@@ -40,9 +40,9 @@ This plan reflects repository state at commit `f07633a` on 2026-09-08. Repositor
 | M02 Forecast Inference & Contract | **Sprint 2a complete (pending review)** | `artifact_registry.py` (full bundle: joblib + `prepared/` + `config/` + `reports/`, schema-`3.2`, `diagnostics`), `forecast_service.py` (`_demand_component`/`_series_component`/`evidence`), reshaped `forecast.py` schemas, `GET /forecast/{catalog,outlook,evidence}` | Contract hardening + optional rice benchmark (Sprint 3) |
 | M03 Dashboard | **Sprint 2c done (pending review)** | `apps/web/src/app/page.tsx` + `DashboardClient.tsx` — 4-commodity outlook cards for the selected province, keyed-result state (no stale leak) | E2E QA (Sprint 6) |
 | M04 Forecasting & Opportunity | **Sprint 2b + 2c done (pending review)** | `ml/forecasting/opportunity.py` (config-driven scorer), `forecast_service._opportunity()`, `forecasting/page.tsx` + `ForecastingClient.tsx` (component cards + opportunity breakdown) | "Why this result?" (Sprint 3) |
-| M05 Explainability | Not implemented | no `/forecast/methodology`, no "Why this result?" component, no methodology schema | Sprint 3 |
-| M06 GIS Analytics | Not implemented | `mapping/page.tsx` stub | Sprint 4 |
-| M07 Curated Markets | Not started | `markets/` package dir exists but empty of logic; `ml/artifacts/market_coordinates/*.csv` was **removed** in the artifact replacement and must be restored; no `market_recommendation_config.json` in the repo; no registry, ranking, API, schema, or UI | Sprint 4 (restore coordinates first) |
+| M05 Explainability | **Sprint 3 done (pending review)** | `GET /forecast/methodology`, `WhyThisResult.tsx` + `MethodologyPanel`, ADR-001 (rice benchmark deferred), `test_forecast_invariants.py` | — |
+| M06 GIS Analytics | **Sprint 4 partial (pending review)** | existing `CalabarzonMap` + `mapping/MappingAnalytics.tsx` (province-resolution layer list beside the boundary map); on-map choropleth is a follow-up | choropleth + map pin (Sprint 6) |
+| M07 Curated Markets | **Sprint 4 done (pending review)** | `markets/{registry,ranking}.py`, `GET /markets`, `GET /markets/rank`, `config/market_recommendation_config.json`, `markets/` UI, `test_markets.py` | — |
 | M08 Chatbot | Baseline implemented | `rag/` pipeline, `POST /rag/query`, `chat/page.tsx` (with test) | Inject structured analytics context — Sprint 5 |
 | M09 Model Evidence | **Backend done (Sprint 2a, pending review)** | `ForecastService.evidence()`, `GET /forecast/evidence`, `EvidenceResponse` schema, `test_forecast_service`/`test_forecast_router` coverage | Frontend evidence page — Sprint 5 |
 | M10 UX Resilience | Partial | loading/error/unsupported states in `setup` and `chat`; every other route is `ComingSoon` | Finish per real page as it lands |
@@ -86,9 +86,9 @@ Backend tests live in `apps/api/tests/`, `rag/tests/`, and `ml/demand/tests/` (n
 | `GET /forecast/catalog` | Implemented | setup, filters, future map/market views |
 | `GET /forecast/outlook?commodity=&province=` | Implemented — returns `observed`/`forecast` series + unit/frequency/confidence/source/label (Sprint 2a); opportunity still `INSUFFICIENT_DATA` | dashboard and forecasting (once built) |
 | `GET /forecast/evidence` | Implemented (Sprint 2a) — 12 components with model/metrics/verdict/baseline/`province_holdout` | Sprint 5 model-evidence page |
-| `GET /forecast/methodology` | Not implemented | Sprint 3 explainability UI |
+| `GET /forecast/methodology` | Implemented (Sprint 3) — methodology_registry + configs + static disclaimers | forecasting page methodology panel |
 | `POST /rag/query` | Baseline implemented | chat page; analytics context not injected |
-| `/markets/*` | Not implemented | Sprint 4 markets list/map |
+| `GET /markets`, `GET /markets/rank` | Implemented (Sprint 4) — list + farmer-relative ranking with breakdown | markets page |
 
 ---
 
@@ -167,7 +167,7 @@ Policy from the file: normalize every input to 0–100 before combining; never s
 
 ## 4. Sprint Roadmap
 
-**State:** Sprints 0 / 0.5 / 1 done (0.5 partial). Sprint 2 (2a + 2b + 2c.1/2c.2) complete pending review on `sprint-2a/forecast-values-backend` and `sprint-2b-2c/opportunity-and-dashboard`. Next: Sprint 3. Sprints 3–6 keep their shape; the artifact drop mostly *shrinks* their scope:
+**State:** Sprints 0 / 0.5 / 1 done (0.5 partial). Sprint 2 (2a + 2b + 2c.1/2c.2) complete on `sprint-2a/…` + `sprint-2b-2c/…`. Sprint 3 done + Sprint 4 (4.0/4.2/4.3 done, 4.1 partial) on `sprint-3-4/explainability-and-markets`, pending review. Next: Sprint 5, then Sprint 6 (which also picks up the 4.1 choropleth follow-up).
 
 | Sprint | Net effect of the artifact drop |
 |---|---|
@@ -367,102 +367,70 @@ cd apps/web; npm run typecheck; npm run test; npm run lint; npm run build       
 
 **Follow-up acceptance:** Sprint 3 must make demand provenance and any future rice benchmark mode explicit before GIS or chatbot reuse the values.
 
-## Sprint 3 — Forecast Contract Hardening, Explainability, Optional Rice Benchmark
+## Sprint 3 — Forecast Contract Hardening, Explainability, Optional Rice Benchmark — COMPLETE (pending review)
 
 **Modules:** M02, M04, M05, part of M09 and M10
 
-**Revision (artifact drop):** demand provenance is now simple — one committed index path — so Task 3.1's `prepared_proxy_snapshot` vs `fies_xgboost_benchmark` split only matters *if* the optional rice MT benchmark is built. Methodology (Task 3.2) is now largely a read of committed files: `reports/methodology_registry.json`, `config/commodity_flow_methodology.json`, `config/opportunity_scoring_config.json`.
-
-**Files:**
-
-- Modify: `ml/forecasting/forecast_service.py`, `apps/api/app/schemas/forecast.py`, `apps/api/app/routers/forecast.py`
-- Modify: `apps/web/src/types/forecast.ts`, `apps/web/src/app/forecasting/page.tsx`
-- Create: `apps/web/src/app/components/WhyThisResult.tsx`
-- Test (under `apps/api/tests/`): `test_forecast_service.py`, `test_forecast_router.py`, `test_forecast_evidence.py`, `test_forecast_methodology.py`, `test_opportunity.py`; focused frontend tests
-
-### Task 3.2 — Methodology endpoint + "Why this result?" (do this first now)
-
-- [ ] `GET /forecast/methodology` assembled from `reports/methodology_registry.json` + `config/opportunity_scoring_config.json` + `config/commodity_flow_methodology.json` (all cached by the registry).
-- [ ] "Why this result?" for demand, supply, price, opportunity: model/verdict, leading available factors, confidence reason, source, frequency, province resolution, data coverage, limitations.
-- [ ] State explicitly that proxy estimates and opportunity associations are not causal findings.
-- [ ] Do not invent confidence intervals; label unavailable when artifacts don't provide them.
+**Delivered on `sprint-3-4/explainability-and-markets`:** `docs/architecture/adr-001-rice-fies-xgboost-benchmark.md`, `GET /forecast/methodology` + `ForecastService.methodology()` + `MethodologyResponse`, `apps/web/src/components/forecast/WhyThisResult.tsx` + `MethodologyPanel` in `ForecastingClient`, `apps/api/tests/test_forecast_methodology.py` + `test_forecast_invariants.py`.
 
 ### Task 3.1 — Optional rice FIES/XGBoost benchmark + physical `supply_gap_mt`
 
-- [ ] Decide and record (ADR): build it, or defer. `reports/dataset_inventory.csv` confirms the raw FIES-LFS files exist externally; `ml/demand/pipeline/` is the reference implementation.
-- [ ] If built: commit `data/processed/demand/` inputs, load the pipeline only when present (`demand_pipeline=None` otherwise), add contract fields distinguishing the benchmark from the index path **without** changing the `Estimated Demand Proxy` label.
-- [ ] Keep physical `supply_gap_mt` rice-only; never apply it to the index-proxy commodities.
-- [ ] Normalize `data_as_of` across both paths.
+- [x] **ADR-001: deferred.** Raw FIES-LFS inputs are external and large; `ml/demand/pipeline` is wired to fail at the inference boundary; the committed demand-pressure index already covers all four commodities honestly. Revisit criteria recorded in the ADR.
+- [x] Invariant kept: `demand.unit` is always an index; no `supply_gap_mt` in the contract (`test_forecast_invariants.py`).
 
-### Task 3.3 — Preserve analytical invariants
+### Task 3.2 — Methodology endpoint + "Why this result?"
 
-- [ ] Red Onion supply/price stay value-free; Red Onion opportunity unavailable (its demand index alone is not enough).
-- [ ] `supply_gap_mt` (if it exists) stays rice-only.
-- [ ] Opportunity scoring changes only when `config/opportunity_scoring_config.json` and `test_opportunity.py` change together.
-- [ ] No stale component values after a failed or changed request.
+- [x] `GET /forecast/methodology` — assembled from `reports/methodology_registry.json` + `config/opportunity_scoring_config.json` + `config/commodity_flow_methodology.json`; static `disclaimers` always present (not artifact-derived).
+- [x] `WhyThisResult` per demand/supply/price/opportunity: verdict, how-produced (learned model / seasonal-naive / index), confidence, frequency, data coverage + last input date, province resolution, limitations, "not a causal finding · no confidence interval".
+- [x] `MethodologyPanel` at the page foot dumps supply/price/demand method + full disclaimer list.
+- [x] No confidence intervals invented anywhere.
 
-**Verification:**
+### Task 3.3 — Preserve analytical invariants (`test_forecast_invariants.py`)
 
-```powershell
-cd apps/api; uv run pytest tests/test_forecast_service.py tests/test_forecast_router.py tests/test_forecast_evidence.py tests/test_forecast_methodology.py tests/test_opportunity.py; cd ../..
-# if the optional benchmark landed: cd ml/demand; uv run pytest tests; cd ../..
-cd apps/web
-npm run test
-npm run lint
-npm run typecheck
-npm run build
-```
+- [x] Red Onion supply/price value-free and opportunity unavailable across all five provinces.
+- [x] No `supply_gap_mt` / `gap_mt` anywhere in the outlook payload.
+- [x] Opportunity `weights_used` asserted equal to the renormalized `opportunity_scoring_config.json` weights — the scorer can't silently drift.
+- [x] Repeated identical requests are byte-identical.
 
-**Exit flow:** `Dashboard → Forecasting → Why this result?`
+**Verification (green):** `cd apps/api; uv run pytest` → 86 passed (with rag); `ruff check apps/api/app ml/forecasting markets` clean; `cd apps/web; npm run typecheck && npx vitest run && npm run lint && npm run build` → 27 tests, clean, build OK.
 
-## Sprint 4 — GIS Analytics and Curated Markets
+**Exit flow:** `Dashboard → Forecasting → Why this result?` works.
+
+## Sprint 4 — GIS Analytics and Curated Markets — 4.0 + 4.2 + 4.3 COMPLETE; 4.1 partial (pending review)
 
 **Modules:** M06, M07, part of M10
 
-**Revision (artifact drop):** `ml/artifacts/market_coordinates/{CALABARZON_market_coordinates,municipality_centroids}.csv` were **removed** and must be restored (from git history — `git log --diff-filter=D --stat -- ml/artifacts/market_coordinates/` then `git checkout <commit>~1 -- <path>` — or re-sourced) as **Task 4.0** before anything else here. There is no `market_recommendation_config.json` in the repo; Sprint 4 must author the ranking config as `ml/artifacts/config/market_recommendation_config.json` (schema `3.2`, sibling of the other configs).
+**Delivered on `sprint-3-4/explainability-and-markets`:**
 
-**Files:**
+- **4.0** — `ml/artifacts/market_coordinates/*.csv` restored from `cd05722`; `ml/artifacts/config/market_recommendation_config.json` authored (schema `3.2`).
+- **4.2** — `markets/registry.py` (`MarketRegistry`, `MarketRecord`), `markets/ranking.py` (`rank_markets`, haversine + config-weighted), `apps/api/app/schemas/markets.py`, `apps/api/app/routers/markets.py` (`GET /markets`, `GET /markets/rank`), wired into `main.py`; `markets` added to hatch packages; `apps/api/tests/test_markets.py`.
+- **4.3** — `apps/web/src/app/markets/` (`page.tsx` + `MarketsClient.tsx`), `types/markets.ts`, `lib/markets.ts`, `markets/page.test.tsx`.
+- **4.1 (partial)** — `apps/web/src/app/mapping/MappingAnalytics.tsx` + test: commodity + layer (demand/supply/price/opportunity) selectors, a province-resolution value list shaded by relative value, "not available" per province where the layer is `INSUFFICIENT_DATA`, mounted above the existing `CalabarzonMap`.
 
-- Restore: `ml/artifacts/market_coordinates/*.csv`
-- Create: `ml/artifacts/config/market_recommendation_config.json`
-- Create: `apps/web/src/app/mapping/page.tsx`, `apps/web/src/gis-map/` map/data adapters
-- Create: `markets/registry.py`, `markets/ranking.py`, `apps/api/app/routers/markets.py`, `apps/api/app/schemas/markets.py`
-- Create: `apps/web/src/app/markets/page.tsx`, `apps/web/src/types/markets.ts`
-- Test: new market registry/ranking/API tests and frontend map/market helper tests
+### Task 4.1 — Province-honest analytics map
 
-### Task 4.1 — Build a province-honest analytics map
+- [x] Uses the already-vendored `/gis/calabarzon/*.geojson` boundary assets (existing `CalabarzonMap`).
+- [x] Demand / supply / price / opportunity layers; a province shows "not available" when that component is `INSUFFICIENT_DATA` (no rice-gap layer — ADR-001).
+- [x] Copy states province-resolution explicitly ("a municipality on the map resolves to its province — never a municipality forecast").
+- [x] Loading / API-error states; keyed-result derivation, no stale values.
+- [ ] **Not done:** tinting the actual leaflet province polygons (choropleth) and a `?market=` map pin from the markets page — the analytics currently render as a shaded list beside the boundary map, not on it. Deferred to Sprint 6 polish / a follow-up.
 
-- [ ] Load or vendor the CALABARZON boundary assets (embed as a static asset; the CDN allowlist does not cover arbitrary tile hosts).
-- [ ] Add demand, supply, price, and opportunity layers only when the selected response supports them (no rice-gap layer unless Task 3.1 built it).
-- [ ] Label municipality drill-down with the source province and true province resolution.
-- [ ] Loading / API error / unsupported layer / insufficient-data states; no stale map values.
+### Task 4.2 — Curated market registry and ranking
 
-### Task 4.2 — Build the curated market registry and ranking
+- [x] Stable unique `market_id`, province in CALABARZON, numeric in-range coordinates; ~40 of 131 curated entries carry coordinates — the 91 name-only rows are dropped and listed in `registry.diagnostics`.
+- [x] Approximate points kept as-is; `coordinate_confidence` (incl. `NEEDS_VERIFICATION`) preserved; nothing fabricated.
+- [x] Ranked by config weights: proximity (haversine from province centroid), market-size proxy (keyword match on `market_type`), data reliability (confidence score), commodity analytics support (0–3 components available).
+- [x] `policy` array returned with the "not travel time / not buyer demand / approximate coords" caveats; each pick carries `breakdown` + a `why` string.
 
-- [ ] Validate stable market IDs, province/municipality fields, coordinates, coordinate confidence, and public source/context fields.
-- [ ] Preserve missing or approximate coordinates instead of fabricating exact points.
-- [ ] Rank using configured proximity, market-size proxy, data reliability, and supported analytics inputs.
-- [ ] Explain that straight-line distance is not travel time and market size is not buyer demand.
-- [ ] Return a component breakdown and “Why recommended?” explanation.
+### Task 4.3 — Market list + map integration
 
-### Task 4.3 — Integrate market list and map
+- [x] Commodity/province filters synced with `AppPreferences`.
+- [x] Ranked list with per-market "Why recommended?" breakdown, "View on map" (`/mapping?market=`), "Ask AgriWise" (`/chat?about=`) link prep, and a `Source` link where present.
+- [x] No listings, inquiries, transactions, moderation, or buyer-demand quantities.
 
-- [ ] Add commodity/province filters synchronized with shared application state.
-- [ ] Provide list/map selection, compare, “View on Map,” and “Ask AgriWise” link preparation.
-- [ ] Do not add listings, inquiries, transactions, moderation, or buyer-demand quantities.
+**Verification (green):** `cd apps/api; uv run pytest tests/test_markets.py tests/test_forecast_service.py tests/test_opportunity.py` → passed; full suite 86 passed. `cd apps/web; npx vitest run` → 27 passed; lint/types/build clean.
 
-**Verification:**
-
-```powershell
-cd apps/api; uv run pytest tests/test_forecast_service.py tests/test_opportunity.py tests/test_markets_registry.py tests/test_market_ranking.py tests/test_markets_router.py; cd ../..
-cd apps/web
-npm run test
-npm run lint
-npm run typecheck
-npm run build
-```
-
-**Exit flow:** `Forecasting ↔ Mapping → Markets → Why recommended?`
+**Exit flow:** `Forecasting ↔ Mapping → Markets → Why recommended?` — Markets and the mapping analytics list work; the on-map choropleth is the open follow-up.
 
 ## Sprint 5 — Model Evidence UI and Contextual Ask AgriWise
 
