@@ -129,8 +129,8 @@ export default function CalabarzonMap() {
 
   return (
     <div className="flex flex-col gap-2">
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="h-[70vh] w-full overflow-hidden rounded-lg border border-slate-200">
+      {error && <p className="state state-error">{error}</p>}
+      <div className="h-[70vh] w-full overflow-hidden rounded-lg border border-line">
         <MapContainer
           bounds={CALABARZON_BOUNDS}
           maxBounds={MAX_BOUNDS}
