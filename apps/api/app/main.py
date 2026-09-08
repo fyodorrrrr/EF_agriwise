@@ -103,14 +103,17 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    from app.routers import forecast as forecast_router
     from app.routers import rag as rag_router
 
     app.include_router(rag_router.router)
+    app.include_router(forecast_router.router)
 
-    # Ensure the attribute exists even when TestClient is used without the
-    # lifespan context manager. The lifespan value wins when the app runs
+    # Ensure these attributes exist even when TestClient is used without the
+    # lifespan context manager. The lifespan values win when the app runs
     # normally or under `with TestClient(...)`.
     app.state.rag_pipeline = None
+    app.state.forecast_service = _build_forecast_service(settings)
 
     return app
 
