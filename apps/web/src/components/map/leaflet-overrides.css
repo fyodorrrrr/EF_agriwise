@@ -1,0 +1,7 @@
+/* Leaflet gives interactive vector layers (polygons/paths) a tabindex for
+   keyboard accessibility, which makes browsers draw a focus outline around
+   the clicked feature's bounding box. Suppress it for mouse/touch clicks
+   while keeping it for keyboard (Tab) navigation. */
+.leaflet-interactive:focus:not(:focus-visible) {
+  outline: none;
+}
