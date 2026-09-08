@@ -56,7 +56,7 @@ export default function SetupPage() {
           <span className="font-medium">Commodity</span>
           <select
             aria-label="Commodity"
-            className="input-bare border rounded-md px-2 py-1"
+            className="select"
             value={preferences.commodity ?? ""}
             onChange={(e) => setCommodity((e.target.value || null) as Commodity | null)}
           >
@@ -73,7 +73,7 @@ export default function SetupPage() {
           <span className="font-medium">Province</span>
           <select
             aria-label="Province"
-            className="input-bare border rounded-md px-2 py-1"
+            className="select"
             value={preferences.province ?? ""}
             onChange={(e) => setProvince((e.target.value || null) as Province | null)}
           >

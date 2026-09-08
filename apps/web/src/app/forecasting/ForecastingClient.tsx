@@ -83,12 +83,12 @@ export function ForecastingClient() {
             province. Analytics are province-resolution — never a municipality forecast.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Commodity</span>
             <select
               aria-label="Commodity"
-              className="input-bare border rounded-md px-2 py-1"
+              className="select"
               value={commodity ?? ""}
               onChange={(e) => setCommodity((e.target.value || null) as Commodity | null)}
             >
@@ -104,7 +104,7 @@ export function ForecastingClient() {
             <span className="font-medium">Province</span>
             <select
               aria-label="Province"
-              className="input-bare border rounded-md px-2 py-1"
+              className="select"
               value={province ?? ""}
               onChange={(e) => setProvince((e.target.value || null) as Province | null)}
             >

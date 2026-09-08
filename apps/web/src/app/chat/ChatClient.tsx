@@ -74,7 +74,7 @@ export default function ChatClient() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
       <h1 className="text-2xl font-semibold">Ask AgriWise</h1>
 
       {preferences.commodity && preferences.province && (
@@ -147,7 +147,7 @@ export default function ChatClient() {
         data-testid="chat-form"
         aria-label="Ask AgriWise"
         onSubmit={onSubmit}
-        className="input-shell mt-auto"
+        className="input-shell mt-auto sticky bottom-2"
       >
         <input
           type="text"
@@ -162,6 +162,6 @@ export default function ChatClient() {
           Send
         </button>
       </form>
-    </main>
+    </div>
   );
 }

@@ -113,7 +113,7 @@ function EvidenceCard({ evidence: c }: { evidence: EvidenceComponent }) {
               <summary className="cursor-pointer text-[var(--color-accent-600)]">
                 Province hold-out
               </summary>
-              <table className="mt-1 w-full">
+              <table className="mt-1 block w-full overflow-x-auto">
                 <tbody>
                   {c.province_holdout.map((row, i) => (
                     <tr key={i}>

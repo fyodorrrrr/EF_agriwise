@@ -70,7 +70,7 @@ export function DashboardClient() {
           <span className="font-medium">Province</span>
           <select
             aria-label="Province"
-            className="input-bare border rounded-md px-2 py-1"
+            className="select"
             value={province ?? ""}
             onChange={(e) => setProvince((e.target.value || null) as Province | null)}
           >
@@ -118,17 +118,22 @@ export function DashboardClient() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="flex flex-col gap-2 text-sm sm:grid sm:grid-cols-3 sm:gap-3">
                 {(["demand", "supply", "price"] as const).map((kind) => (
-                  <div key={kind} className="flex flex-col gap-1">
+                  <div
+                    key={kind}
+                    className="flex items-center justify-between gap-3 sm:flex-col sm:items-start sm:gap-1"
+                  >
                     <span className="card-kicker">
                       {kind === "demand" ? "Demand proxy" : kind}
                     </span>
-                    <span className="text-md font-semibold">
-                      {componentSummary(outlook, kind)}
-                    </span>
-                    <span className={verdictBadgeClass(outlook[kind].verdict)}>
-                      {verdictLabel(outlook[kind].verdict)}
+                    <span className="flex items-center gap-2 sm:mt-1 sm:flex-col sm:items-start sm:gap-1">
+                      <span className="text-md font-semibold">
+                        {componentSummary(outlook, kind)}
+                      </span>
+                      <span className={verdictBadgeClass(outlook[kind].verdict)}>
+                        {verdictLabel(outlook[kind].verdict)}
+                      </span>
                     </span>
                   </div>
                 ))}

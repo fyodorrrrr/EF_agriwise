@@ -58,12 +58,12 @@ export function MarketsClient() {
             not travel time, and market type is not measured buyer demand.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Commodity</span>
             <select
               aria-label="Commodity"
-              className="input-bare border rounded-md px-2 py-1"
+              className="select"
               value={commodity ?? ""}
               onChange={(e) => setCommodity((e.target.value || null) as Commodity | null)}
             >
@@ -79,7 +79,7 @@ export function MarketsClient() {
             <span className="font-medium">Province</span>
             <select
               aria-label="Province"
-              className="input-bare border rounded-md px-2 py-1"
+              className="select"
               value={province ?? ""}
               onChange={(e) => setProvince((e.target.value || null) as Province | null)}
             >
@@ -167,7 +167,7 @@ function MarketCard({ ranked }: { ranked: RankedMarket }) {
         </table>
       </details>
 
-      <div className="card-foot flex gap-2 text-xs">
+      <div className="card-foot flex flex-wrap gap-2 text-xs">
         <Link
           href={`/mapping?market=${encodeURIComponent(market.market_id)}`}
           className="btn btn-ghost btn-sm"
