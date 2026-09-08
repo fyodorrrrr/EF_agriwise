@@ -6,6 +6,9 @@ export default function Home() {
         Province-resolution demand, supply, price, and opportunity analytics for CALABARZON
         agriculture. Scaffold is running — feature routes land per the sprint plan.
       </p>
+      <a href="/chat" className="text-emerald-700 underline dark:text-emerald-400">
+        Ask AgriWise →
+      </a>
     </main>
   );
 }

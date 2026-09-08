@@ -44,7 +44,9 @@ def test_analytics_context_is_separate_and_optional():
     without = build_messages("q", [], [_chunk("Doc", 1, 1)])
     assert all("analytics context" not in m["content"].lower() for m in without)
 
-    with_ctx = build_messages("q", [], [_chunk("Doc", 1, 1)], analytics_context="Rice demand: USABLE_PROXY")
+    with_ctx = build_messages(
+        "q", [], [_chunk("Doc", 1, 1)], analytics_context="Rice demand: USABLE_PROXY"
+    )
     ctx_msgs = [m for m in with_ctx if "analytics context" in m["content"].lower()]
     assert len(ctx_msgs) == 1
     assert ctx_msgs[0]["role"] == "system"

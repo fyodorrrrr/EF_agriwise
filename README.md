@@ -55,7 +55,7 @@ These rules bind the code and its contracts:
 | `GET /forecast/outlook?commodity=&province=` | Demand/supply/price/opportunity outlook |
 | `GET /forecast/evidence` | Model evidence per commodity/component |
 | `GET /forecast/methodology` | Methodology and opportunity configuration |
-| `POST /rag/query` | Chatbot query |
+| `POST /rag/query` | Ask AgriWise chatbot (document-grounded, multi-turn) |
 | `/markets/*` | Curated market registry and ranking |
 
 ## Development
@@ -72,6 +72,21 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+### RAG chatbot (Ask AgriWise)
+
+The chatbot answers from the three DA manuals in `data/raw/`. Build the index once:
+
+```powershell
+uv sync
+uv run python -m rag.ingest --rebuild
+```
+
+The ingester chunks the source PDFs (chunk size and overlap are measured in characters) and
+writes a Chroma index to `data/processed/rag_index/` (gitignored). Rebuild it from `data/raw/`
+with `uv run python -m rag.ingest --rebuild` whenever the source manuals change. The API loads the index
+at startup; without it, `POST /rag/query` returns 503. Generation needs `GROQ_API_KEY` in
+`apps/api/.env` (model `openai/gpt-oss-120b`).
 
 ## Documentation
 

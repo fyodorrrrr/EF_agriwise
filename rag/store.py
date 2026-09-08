@@ -46,7 +46,9 @@ class ChunkStore:
         metadatas = res["metadatas"][0]
         distances = res["distances"][0]
         out: list[StoredChunk] = []
-        for chunk_id, text, meta, distance in zip(ids, documents, metadatas, distances):
+        for chunk_id, text, meta, distance in zip(
+            ids, documents, metadatas, distances, strict=True
+        ):
             out.append(
                 StoredChunk(
                     chunk_id=chunk_id,

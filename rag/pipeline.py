@@ -62,6 +62,11 @@ class RagPipeline:
     def can_generate(self) -> bool:
         return self._generator is not None
 
+    def warmup(self) -> None:
+        """Force the embedding model to load now, so the first request doesn't pay for it
+        and a model-download failure surfaces at startup (as a 503) not mid-request (as a 500)."""
+        self._retriever.retrieve("warmup")
+
     def answer(self, question: str, history: list[ChatTurn] | None = None) -> RagAnswer:
         if self._generator is None:
             raise RagGenerationError("generation unavailable: GROQ_API_KEY not configured")

@@ -35,7 +35,11 @@ def _chunk(cid, doc, ps, pe):
 
 
 def test_answer_returns_dedup_citations_and_chunk_ids():
-    chunks = [_chunk("a::0", "fbs", 10, 11), _chunk("a::1", "fbs", 10, 11), _chunk("b::0", "gap", 3, 3)]
+    chunks = [
+        _chunk("a::0", "fbs", 10, 11),
+        _chunk("a::1", "fbs", 10, 11),
+        _chunk("b::0", "gap", 3, 3),
+    ]
     pipeline = RagPipeline(_FakeRetriever(chunks), _FakeGenerator())
     result = pipeline.answer("how to budget", [ChatTurn(role="user", content="hi")])
     assert isinstance(result, RagAnswer)

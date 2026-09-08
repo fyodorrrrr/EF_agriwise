@@ -43,6 +43,17 @@ def test_results_sorted_by_score_desc_and_mapped():
     assert store.last_top_k == 4
 
 
+def test_missing_metadata_keys_are_tolerated():
+    store = _FakeStore(
+        [StoredChunk(chunk_id="a", text="body", metadata={}, score=0.9)]
+    )
+    r = Retriever(store, _FakeEmbedder(), top_k=4, score_floor=0.0)
+    out = r.retrieve("q")
+    assert len(out) == 1
+    assert isinstance(out[0], RetrievedChunk)
+    assert out[0].doc_id == "" and out[0].page_start == 0 and out[0].page_end == 0
+
+
 def test_score_floor_filters():
     store = _FakeStore([_stored("a", 0.1), _stored("b", 0.6)])
     r = Retriever(store, _FakeEmbedder(), top_k=4, score_floor=0.5)

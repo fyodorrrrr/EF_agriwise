@@ -37,3 +37,9 @@ markers = ["slow: end-to-end tests that build a real index"]
 target-version = "py312"
 line-length = 100
 extend-exclude = [".venv", "apps/web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "rag"]

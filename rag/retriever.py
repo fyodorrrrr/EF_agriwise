@@ -34,10 +34,10 @@ class Retriever:
             results.append(
                 RetrievedChunk(
                     chunk_id=item.chunk_id,
-                    doc_id=meta["doc_id"],
-                    doc_title=meta["doc_title"],
-                    page_start=int(meta["page_start"]),
-                    page_end=int(meta["page_end"]),
+                    doc_id=meta.get("doc_id", ""),
+                    doc_title=meta.get("doc_title", meta.get("doc_id", "")),
+                    page_start=int(meta.get("page_start", 0)),
+                    page_end=int(meta.get("page_end", 0)),
                     text=item.text,
                     score=item.score,
                 )
