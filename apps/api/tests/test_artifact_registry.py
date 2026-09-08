@@ -1,8 +1,31 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import joblib
+import pytest
 
 from ml.forecasting.artifact_registry import ArtifactRegistry, slugify_commodity
+
+# apps/api/tests/test_artifact_registry.py -> parents[3] == repo root
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_COMMITTED_ARTIFACTS_DIR = _REPO_ROOT / "ml" / "artifacts"
+
+# The bundles committed under ml/artifacts/. Supply covers all four commodities;
+# price has no red_onion artifact (no deployable price model).
+_EXPECTED_BUNDLES = [
+    ("Rice", "demand"),
+    ("Tomato", "demand"),
+    ("Red Onion", "demand"),
+    ("Banana", "demand"),
+    ("Rice", "supply"),
+    ("Tomato", "supply"),
+    ("Red Onion", "supply"),
+    ("Banana", "supply"),
+    ("Rice", "price"),
+    ("Tomato", "price"),
+    ("Banana", "price"),
+]
 
 
 def test_load_missing_directory_returns_empty_registry_without_raising(tmp_path):
@@ -52,3 +75,25 @@ def test_load_skips_corrupt_bundle_without_raising(tmp_path):
     registry = ArtifactRegistry.load(tmp_path)
 
     assert registry.is_empty
+
+
+@pytest.mark.skipif(
+    not _COMMITTED_ARTIFACTS_DIR.is_dir(),
+    reason="committed artifact bundles not present in this checkout",
+)
+def test_all_committed_artifact_bundles_load():
+    """Every bundle under ml/artifacts/ must register.
+
+    Regression guard: the shared VEG demand bundle (Tomato, Red Onion) pickles
+    an XGBoost estimator, so a runtime without `xgboost` installed silently
+    drops those two commodities' demand to INSUFFICIENT_DATA.
+    """
+    registry = ArtifactRegistry.load(_COMMITTED_ARTIFACTS_DIR)
+
+    missing = [
+        (commodity, component)
+        for commodity, component in _EXPECTED_BUNDLES
+        if not registry.has(commodity, component)
+    ]
+
+    assert not missing, f"artifact bundles failed to load: {missing}"
