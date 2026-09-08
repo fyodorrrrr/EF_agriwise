@@ -1,0 +1,4 @@
+feature_source,count,note
+LFS-derived likely; training provenance unverified,129,No original preprocessing script was found; BREAD is not in the 129-feature manifest.
+FIES-only identified predictor,0,No manifest feature contains BREAD or an identified FIES target.
+joint/unknown,0,No additional source class could be proven from available artifacts.
