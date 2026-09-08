@@ -4,13 +4,15 @@
 
 **Goal:** Complete the AgriWise hackathon MVP from the repository's current working baseline while keeping demand, supply, price, and opportunity outputs scientifically honest and consistent across the dashboard, forecasting, mapping, markets, evidence, and chatbot experiences.
 
-**Architecture:** FastAPI loads the versioned forecasting snapshot once, exposes province-resolution analytics through typed contracts, and supplies those contracts to a Next.js application. Demand has a committed proxy path for all commodities and an optional FIES/XGBoost benchmark path for rice; supply and price use their validated component artifacts; opportunity combines normalized peer-relative inputs without subtracting incompatible units.
+**Architecture:** FastAPI loads the versioned forecasting artifact bundle once, exposes province-resolution analytics through typed contracts, and supplies those contracts to a Next.js application. Demand serves a committed quarterly **demand-pressure index** (FIES baseline + LFS activity + seasonal indices) for all four commodities; supply and price serve observed history plus a short forecast from committed feature tables and per-commodity models; opportunity combines normalized peer-relative inputs without subtracting incompatible units.
 
-**Tech Stack:** Python 3.12, FastAPI, Pydantic, pandas, NumPy, scikit-learn/joblib, optional XGBoost, pytest, Next.js 16 App Router, React, TypeScript, Tailwind CSS 4, Vitest.
+**Tech Stack:** Python 3.12, FastAPI, Pydantic, pandas, NumPy, scikit-learn/joblib, XGBoost, pytest, Next.js 16 App Router, React, TypeScript, Tailwind CSS 4, Vitest.
 
-**Specs and evidence:** `ml/artifacts/README.md` (forecast-service artifact registry contract and verdict tiers), `ml/demand/README.md` (isolated FIES/LFS quarterly demand pipeline), the committed artifact bundles under `ml/artifacts/{demand,supply,price}/`, and the checked-in contracts in `apps/api/app/schemas/forecast.py` and `apps/web/src/types/`.
+**Specs and evidence:** `ml/demand/README.md` (isolated FIES/LFS reference pipeline), `ml/artifacts/reports/methodology_registry.json` + `unified_deployment_summary.csv` + per-component verdict/metric CSVs, `ml/artifacts/config/*.json` (demand registry, opportunity scoring, commodity-flow), the committed bundles under `ml/artifacts/{demand,supply,price}/` and feature tables under `ml/artifacts/prepared/`, and the checked-in contracts in `apps/api/app/schemas/forecast.py` and `apps/web/src/types/`.
 
-> **Re-baseline note (2026-09-08, commit `f07633a`).** Section 1 was rewritten to match this repository. The earlier baseline (commit `a920b90`) and the files it cites — `docs/architecture/sprint-0-audit.md`, `fies-demand-benchmark-pipeline.md`, `CODEBASE_CONTEXT.md`, `ml/artifacts/reports/unified_deployment_summary.csv` — describe a different codebase and are **not present here**. This repo is a leaner reimplementation currently at the end of Sprint 1. Sprint 2 has been split into **2a (forecast-value + evidence backend)**, **2b (opportunity engine)**, and **2c (dashboard + forecasting UI)**.
+> **Re-baseline note 1 (2026-09-08, commit `f07633a`).** Section 1 was rewritten to match this repository. The earlier baseline (commit `a920b90`) and some files it cited — `docs/architecture/sprint-0-audit.md`, `fies-demand-benchmark-pipeline.md`, `CODEBASE_CONTEXT.md` — describe a different codebase and are not present here. This repo is a leaner reimplementation. Sprint 2 has been split into **2a (forecast-value + evidence backend)**, **2b (opportunity engine)**, and **2c (dashboard + forecasting UI)**.
+>
+> **Re-baseline note 2 (2026-09-08).** The `ml/artifacts/` tree was then replaced with the mature bundle: per-commodity **`prepared/*_features.csv`** (observed + pre-engineered future rows), **`config/*.json`**, **`reports/*`** (verdicts, metrics, `methodology_registry.json`), and `demand/{rice,banana,vegetable_shared}.joblib`. This resolves the "how do we generate forecast values" question for Sprints 2a/2b — the data now exists. Sections 1–3 and Sprint 2 below reflect the new bundle. `ml/artifacts/README.md` and `ml/artifacts/market_coordinates/` were removed in that replacement and must be restored (README rewrite in Task 2a.1; market coordinates in Sprint 4).
 
 ## Global Constraints
 
@@ -18,10 +20,10 @@
 - Forecast analytics are province-resolution. Municipality selection may resolve to a province but must never be presented as a municipality forecast.
 - Demand must be labeled **Estimated Demand Proxy** and must never be described as observed commodity consumption.
 - Supply remains quarterly in metric tons; price remains monthly in PHP/kg; demand remains quarterly.
-- Preserve the verdicts in the current artifact bundle: `PASS`, `CAUTION`, `INSUFFICIENT_DATA`, and demand-specific `USABLE_PROXY`.
+- Preserve the verdicts in the artifact bundle: `PASS`, `CAUTION`, `INSUFFICIENT_DATA`, and demand-specific `USABLE_PROXY` / `INDICATIVE_PROXY`.
 - `INSUFFICIENT_DATA` components contain no generated forecast values, and missing critical inputs block opportunity scoring.
 - Do not add authentication, marketplace listings, buyer-demand volumes, transactions, admin CRUD, or fabricated lower-resolution analytics.
-- Do not modify `data/raw/` in place. Derived inputs belong in `data/processed/`.
+- Do not modify `data/raw/` in place. Committed derived inputs live in `ml/artifacts/prepared/`; regenerating them is an offline step, not a runtime one.
 - Each sprint ends with a runnable application, focused tests, and a concise completion report.
 
 ---
@@ -35,37 +37,47 @@ This plan reflects repository state at commit `f07633a` on 2026-09-08. Repositor
 | Module | Current state | Evidence | Remaining work |
 |---|---|---|---|
 | M01 App Shell & Setup | Implemented | `apps/web/src/app/setup/page.tsx`, `AppPreferencesContext` + `preferences.tsx` (with tests), sidebar/navigation, `ComingSoon` shell for unbuilt routes | Wire real pages into shared state as they land |
-| M02 Forecast Inference & Contract | **Partial — registry + contract only** | `artifact_registry.py` (loads bundle metadata only; comment: "no schema-version or feature-list validation yet"), `forecast_service.py` (returns each artifact's own verdict/metrics/limitations; comment: forward-looking value generation is "not-yet-designed"), `apps/api/app/schemas/forecast.py`, `GET /forecast/{catalog,outlook}` | Generate forecast values (Sprint 2a); harden registry to schema `3.2`; add evidence extraction |
+| M02 Forecast Inference & Contract | **Partial — registry + contract only** | `artifact_registry.py` (loads joblib metadata only; no schema/feature validation; does not read `prepared/`, `config/`, `reports/`), `forecast_service.py` (returns each artifact's verdict/metrics/limitations; no value generation), `apps/api/app/schemas/forecast.py`, `GET /forecast/{catalog,outlook}` | Load the full artifact bundle; generate forecast values from `prepared/*` (Sprint 2a); schema-`3.2` validation; evidence extraction |
 | M03 Dashboard | **Not implemented** | `apps/web/src/app/page.tsx` is a `ComingSoon` stub | Sprint 2c |
 | M04 Forecasting & Opportunity | **Not implemented** | `apps/web/src/app/forecasting/page.tsx` is a `ComingSoon` stub; `forecast_service.outlook()` hardcodes `_insufficient_data_opportunity()` — no opportunity engine exists | Opportunity engine (Sprint 2b); forecasting UI (Sprint 2c) |
 | M05 Explainability | Not implemented | no `/forecast/methodology`, no "Why this result?" component, no methodology schema | Sprint 3 |
 | M06 GIS Analytics | Not implemented | `mapping/page.tsx` stub | Sprint 4 |
-| M07 Curated Markets | Data only | `ml/artifacts/market_coordinates/*.csv` (currently untracked), `market_recommendation_config.json`; no registry, ranking, API, schema, or UI | Sprint 4 |
+| M07 Curated Markets | Not started | `markets/` package dir exists but empty of logic; `ml/artifacts/market_coordinates/*.csv` was **removed** in the artifact replacement and must be restored; no `market_recommendation_config.json` in the repo; no registry, ranking, API, schema, or UI | Sprint 4 (restore coordinates first) |
 | M08 Chatbot | Baseline implemented | `rag/` pipeline, `POST /rag/query`, `chat/page.tsx` (with test) | Inject structured analytics context — Sprint 5 |
 | M09 Model Evidence | **Not implemented** | no `/forecast/evidence`, no `ForecastService.evidence()`, no evidence schema or tests | Backend in Sprint 2a; frontend in Sprint 5 |
 | M10 UX Resilience | Partial | loading/error/unsupported states in `setup` and `chat`; every other route is `ComingSoon` | Finish per real page as it lands |
 
-Also absent vs. the old baseline: `CODEBASE_CONTEXT.md`, the `docs/architecture/sprint-0-audit.md` / `fies-demand-benchmark-pipeline.md` specs, `ml/artifacts/reports/`, `apps/web/src/types/` may be thinner than assumed, and there are no `pytest` suites under a top-level `tests/` — backend tests live in `apps/api/tests/`, `rag/tests/`, and `ml/demand/tests/`.
+Backend tests live in `apps/api/tests/`, `rag/tests/`, and `ml/demand/tests/` (not a top-level `tests/`).
 
-### Two artifact stores (do not conflate)
+### The `ml/artifacts/` bundle (post-replacement)
 
-| | `ml/artifacts/` | `ml/demand/` |
+| Subtree | Contents | Consumed how |
 |---|---|---|
-| Format | `joblib`-pickled dict bundles per `{component}/{commodity}.joblib`, schema `3.2` | native XGBoost JSON boosters + feature/parameter manifests |
-| Consumed by | `ArtifactRegistry` → `ForecastService` → `/forecast/outlook` | `ml/demand/pipeline/` (Denton benchmarking + spatial reconciliation); **not wired into the API** |
-| Contents | demand/supply/price bundles for all 4 commodities (committed) | FIES/LFS household `BREAD`/`VEG` expenditure "Model B" |
-| Runtime inputs it needs | supply/price bundles carry `model` + `history_tail` + `seasonal_period` and are self-contained; demand bundles are **cross-sectional 2023 estimators with no time series** | `data/processed/demand/` LFS feature rows + benchmark CSVs — **none committed**; `run_pipeline.py` "intentionally fails at the inference boundary" in this checkout |
+| `demand/*.joblib` | `rice` (`BREAD`), `vegetable_shared` (`VEG`, backs Tomato + Red Onion), `banana` (`FRUIT`) — cross-sectional 2023 FIES household-expenditure estimators, schema `3.2` | **metadata only** (verdict / metrics / limitations / label). Never called at request time — demand values come from `prepared/` |
+| `supply/*.joblib`, `price/*.joblib` | fitted `Pipeline` + `features` + `seasonal_period` + `metrics` + `verdict`. Present: `supply/{banana,red_onion}`, `price/rice`. **Being restored (decision (a)): `supply/{rice,tomato}`, `price/{tomato,banana}`** | the model for the forecast step in `prepared/*_features.csv` |
+| `prepared/{commodity}_{supply,price}_features.csv` | full observed history + **future rows with `target` NaN and lags/season/rolls pre-engineered** (10 future quarters supply, up to Dec-2026 price) | `ForecastService` reads observed `target` + predicts the future rows |
+| `prepared/quarterly_demand_pressure_index.csv` | observed demand-pressure index, 4 commodities × 5 provinces, 2021Q1–2025Q4 (`fies_base_index`, `economic_activity_index`, `supply_season_index`, `affordability_season_index`, `demand_pressure_index`) | the observed demand series |
+| `prepared/future_demand_pressure_3q.csv` | 3 forecast quarters (2026 Q1–Q3) per commodity × province, with `confidence` (`moderate_proxy` / `low_to_moderate_shared_veg_proxy`) | the demand forecast |
+| `prepared/lfs_calabarzon_activity_*.csv`, `demand_proxy_province_baseline.csv` | LFS activity inputs + FIES holdout baseline | evidence / methodology context |
+| `config/commodity_demand_registry.json` | per-commodity → artifact / target / display label / specificity | demand labelling |
+| `config/opportunity_scoring_config.json` | component weights, directions, 0–100 normalization policy | Sprint 2b scorer |
+| `config/commodity_flow_methodology.json` | optional external inflow/outflow indicator policy | Sprint 3 methodology / optional opportunity input |
+| `reports/*` | `{supply,price}_deployment_verdicts.csv`, `*_model_metrics.csv` (incl. seasonal-naive baselines), `unified_deployment_summary.csv`, `demand_validation_summary.csv`, per-commodity demand `*_validation_report.md`, `methodology_registry.json`, `dataset_inventory.csv` | `/forecast/evidence` (2a.4), `/forecast/methodology` (Sprint 3) |
 
-### Verified model matrix (bundle verdicts at `f07633a`)
+**Separately:** `ml/demand/` (native XGBoost boosters + `pipeline/` for Denton benchmarking / spatial reconciliation) is the isolated FIES/LFS **reference** pipeline. It is **not wired into the API** and is not needed for serving — the committed `prepared/` index tables already carry the demand series. It stays relevant only for the optional rice physical-MT benchmark (Sprint 3).
 
-| Commodity | Demand | Supply | Price | Opportunity consequence |
+> **Current breakage (blocks Sprint 2a.1, expected):** the new demand bundles key on `artifact_name` (`rice` / `vegetable_shared` / `banana`), not `commodity`. `ArtifactRegistry._load_bundle` does `bundle["commodity"]` and therefore **skips all three demand bundles** (`KeyError`), so the running API currently has zero demand artifacts and `test_all_committed_artifact_bundles_load` fails. Task 2a.1 fixes this by resolving demand via `config/commodity_demand_registry.json`. Supply/price bundles still carry `commodity` and load fine.
+
+### Verified model matrix (post-replacement)
+
+| Commodity | Demand (index) | Supply (MT, quarterly) | Price (PHP/kg, monthly) | Opportunity consequence |
 |---|---|---|---|---|
-| Rice | `USABLE_PROXY`; `BREAD` category, cross-sectional 2023 FIES estimator (no quarterly series yet) | `CAUTION`; hist gradient boosting, 40 quarterly history points | `PASS`; hist gradient boosting, 120 monthly points | Peer-relative score once 2a produces a demand series and 2b lands; no physical MT gap (rice FIES benchmark not wired) |
-| Tomato | `INDICATIVE_PROXY`; shared `VEG` estimator | `CAUTION`; random forest, seasonal period 4 | `CAUTION`; random forest, seasonal period 12 | Peer-relative score after 2a + 2b; no physical demand−supply subtraction |
-| Red Onion | `INDICATIVE_PROXY`; same shared `VEG` estimator | `INSUFFICIENT_DATA`; seasonal-naive comparison, `model=None` | no bundle → `INSUFFICIENT_DATA` | Unavailable — critical supply and price inputs missing |
-| Banana | `INDICATIVE_PROXY`; `FRUIT` category estimator | `CAUTION`; seasonal-naive, `model=None` | `PASS`; random forest, seasonal period 12 | Peer-relative score after 2a + 2b; no physical demand−supply subtraction |
+| Rice | `USABLE_PROXY`; `BREAD` proxy. Index series in `prepared/`, forecast confidence `moderate_proxy` | `CAUTION`; hist gradient boosting *(joblib being restored)* | `PASS`; hist gradient boosting | Peer-relative score once 2a + 2b land |
+| Tomato | `INDICATIVE_PROXY`; shared `VEG` proxy. Forecast confidence `low_to_moderate_shared_veg_proxy` | `CAUTION`; random forest *(joblib being restored)* | `CAUTION`; random forest *(joblib being restored)* | Peer-relative score after 2a + 2b |
+| Red Onion | `INDICATIVE_PROXY`; same shared `VEG` proxy. **Demand series is available** | `INSUFFICIENT_DATA`; `model=None`, seasonal-naive baseline only → value-free | `INSUFFICIENT_DATA`; 972/1020 rows null → value-free | Unavailable — supply and price missing |
+| Banana | `INDICATIVE_PROXY`; `FRUIT` proxy. Forecast confidence `moderate_proxy` | `CAUTION`; seasonal-naive (`model=None`) | `PASS`; random forest *(joblib being restored)* | Peer-relative score after 2a + 2b |
 
-`INDICATIVE_PROXY` is a real verdict in `apps/api/app/schemas/forecast.py`; the shared `VEG` model backs both Tomato and Red Onion demand (two files, one estimator, keyed on the `commodity` field).
+`INDICATIVE_PROXY` is a real verdict in `apps/api/app/schemas/forecast.py`. Red Onion is value-free for **supply and price only** — its demand proxy (shared `VEG` index) is present.
 
 ### Current API surface
 
@@ -80,68 +92,89 @@ Also absent vs. the old baseline: `CODEBASE_CONTEXT.md`, the `docs/architecture/
 
 ---
 
-## 2. Current Demand Retrieval and Inference Logic
+## 2. Demand Retrieval Logic
 
-### What exists today (commit `f07633a`)
+### The demand series exists — it is committed, not computed at request time
 
-1. `apps/api/app/main.py` builds one `ArtifactRegistry` during FastAPI lifespan startup from `settings.forecast_artifacts_dir` (`ml/artifacts`).
-2. `ArtifactRegistry.load()` does **not** validate schema version, trusted paths, feature lists, or model presence yet. It `joblib.load`s each `{component}/{commodity}.joblib`, reads `commodity`/`model_id`/`verdict`/`metrics`/`limitations`, and on any exception logs a warning and treats the bundle as absent. A missing/empty directory yields an empty registry, not an error.
-3. Demand bundles registered: `rice.joblib` (`BREAD`, `USABLE_PROXY`), `tomato.joblib` and `red_onion.joblib` (both the shared `VEG` estimator, `INDICATIVE_PROXY`), `banana.joblib` (`FRUIT`, `INDICATIVE_PROXY`).
-4. `ForecastService.outlook()` returns, per component, only the bundle's own `verdict`, `metrics`, and `limitations`. **No `values`, `unit`, `frequency`, `confidence`, `source`, or `data_as_of`** — the code comment states forward-looking value generation is "a separate, not-yet-designed piece of work".
-5. There is no `DemandPredictionPipeline` wired into startup, no `data/processed/` demand inputs, and no rice FIES/XGBoost benchmark path in the API.
+Demand is served from two committed tables, not from the `.joblib` estimator:
 
-### Why demand values are the hard part
+| Table | Role | Shape |
+|---|---|---|
+| `prepared/quarterly_demand_pressure_index.csv` | observed demand-pressure index | 4 commodities × 5 provinces × 19 quarters (2021Q1–2025Q4); column `demand_pressure_index` plus its four sub-indices |
+| `prepared/future_demand_pressure_3q.csv` | forecast | same keys × 3 quarters (2026 Q1–Q3); `estimated_demand_pressure_index`, `confidence`, `observed_demand=false` |
 
-The demand `.joblib` bundles are **cross-sectional 2023 FIES household-expenditure estimators** (features `FSIZE`, `URB`, `TOINC`, …), explicitly limited as "not an observed quarterly demand forecast." They carry no `history_tail` and no time series. Producing a province×quarter **Estimated Demand Proxy** series therefore requires one of:
+The index is **base ≈ 100**, dimensionless. Per `reports/methodology_registry.json` it is composed from a FIES 2023 household-expenditure baseline + LFS economic-activity index + seasonal supply/affordability indices — **not** the Denton/MT pipeline in `ml/demand/`. All four commodities (Red Onion included) have a series.
 
-- **Option A — precomputed series (recommended for Sprint 2a):** run the estimator + FIES/LFS table + spatial/temporal (Denton) allocation **offline**, commit the resulting `province × quarter` proxy series as a CSV under `ml/artifacts/demand/` (or `data/processed/demand/`), and have `ForecastService` read it at request time. Fast, deterministic, no XGBoost at runtime.
-- **Option B — wire `ml/demand/`:** commit `data/processed/demand/` LFS feature rows + benchmark CSVs and call `ml/demand/pipeline/run_pipeline.py` / `inference.py`. Heavier: adds `xgboost` as an API runtime dependency (not currently installed in `apps/api/.venv`) and a Model-B feature contract that the repo's regional LFS table "intentionally fails" to satisfy.
+`ForecastService._demand_component()` (Sprint 2a) reads these tables, filters to `(commodity, province)`, returns the observed tail + the 3 forecast quarters. It **must not** call the demand `.joblib` at request time.
 
-Sprint 2a picks Option A unless a decision record says otherwise.
+### What the demand `.joblib` bundles are for
+
+`demand/{rice,vegetable_shared,banana}.joblib` are cross-sectional 2023 FIES household-expenditure estimators (`BREAD` / `VEG` / `FRUIT`), schema `3.2`. They supply, for `/forecast/evidence` and for the demand label: `selected_model`, weighted/unweighted metrics, `province_holdout`, `verdict` + `verdict_reason`, `limitations`, and (via `config/commodity_demand_registry.json`) the display label — "Cereal / Vegetable / Fruit Household Demand Proxy". The global UI label stays **Estimated Demand Proxy**.
 
 ### Contract fields already reserved
 
-`apps/api/app/schemas/forecast.py` documents deferred work: a `demand_label` field enforcing "Estimated Demand Proxy" wording, `data_as_of` format reconciliation, and the `/forecast/evidence` + `/forecast/methodology` shapes. `Verdict` already includes `USABLE_PROXY` and `INDICATIVE_PROXY`.
+`apps/api/app/schemas/forecast.py` documents deferred work: a `demand_label` field, `data_as_of` normalization, and the `/forecast/evidence` + `/forecast/methodology` shapes. `Verdict` already includes `USABLE_PROXY` and `INDICATIVE_PROXY`.
 
-### Demand risks to resolve
+### Demand invariants
 
-- The rice FIES/XGBoost benchmark path and its physical `supply_gap_mt` do not exist here. When/if added, they must be gated and clearly distinguished from the index/proxy path (Sprint 3, Task 3.1).
-- A generic "demand−supply gap" is scientifically unsupported for all four commodities under the committed artifacts — demand output is a proxy index, not physical volume.
-- Evidence/UI copy must not imply request-time joblib inference; the served demand values will be precomputed snapshot values.
+- Always labelled **Estimated Demand Proxy**; the unit is an index, never metric tons and never "observed consumption".
+- `confidence` on the forecast rows is carried verbatim (`moderate_proxy`, `low_to_moderate_shared_veg_proxy`) and mapped to the contract `Confidence` enum for opportunity scoring.
+- A generic "demand−supply gap" is unsupported — demand is an index, supply is MT. Physical `supply_gap_mt` stays a rice-only optional path (Sprint 3).
+- Evidence/UI copy must not imply request-time inference; served demand values are committed snapshot values.
 
 ---
 
 ## 3. Supply, Price, and Opportunity — Target Logic
 
-None of the logic in this section is implemented yet. It is the design Sprint 2a (supply/price) and Sprint 2b (opportunity) must build. The supply/price target is achievable now because each `ml/artifacts/{supply,price}/{commodity}.joblib` bundle is self-contained.
+Not implemented yet; this is what Sprint 2a (supply/price) and Sprint 2b (opportunity) build. The data now exists in `ml/artifacts/prepared/` and `ml/artifacts/config/`.
 
-### Supply
+### Supply and price — one `_forecast_series_component()`
 
-- Each supply bundle carries `model` (a fitted sklearn `Pipeline`, or `None`), `strategy`, `features`, `seasonal_period` (4), and `history_tail` (~40 quarterly points). No external feature table is needed.
-- A shared `_modeled_component()` returns the observed tail plus up to three predicted future quarters — from the learned model when present (`rice`: hist gradient boosting; `tomato`: random forest), otherwise seasonal-naive from `history_tail` (`banana`).
-- Red onion supply is `INSUFFICIENT_DATA` with `model=None`; it must stay value-free.
+For a `(commodity, component)`:
 
-### Price
+1. Read `prepared/{commodity}_{component}_features.csv` (parse `date`).
+2. **Observed series** = rows with non-null `target`, for the requested province, most-recent tail.
+3. **Forecast** = the future rows (null `target`, `date` after the last observed date for that province), next 3 periods:
+   - **model present** (`{component}/{commodity}.joblib`, verdict ≠ `INSUFFICIENT_DATA`): `bundle["model"].predict(rows[bundle["features"]])`. The pipeline's `SimpleImputer` covers the still-missing exogenous columns (`area`, `yield_proxy`, cross-series lag) in the furthest rows. `source = "learned_model:<strategy>"`.
+   - **no model / `strategy == "seasonal_naive"`** (`banana` supply; `rice`/`tomato` supply and `tomato`/`banana` price *until their joblibs are restored*): use the `lag_4` (supply) / `lag_12` (price) column already on the future rows. `source = "seasonal_naive"`.
+4. `frequency`: `quarterly` (supply) / `monthly` (price). `unit`: `MT` / `PHP/kg`. `data_as_of`: last observed `date`.
+5. `confidence` from the bundle verdict: `PASS → HIGH`, `CAUTION → MODERATE`, else `NONE`.
+6. **Red Onion**: supply `model=None` + `INSUFFICIENT_DATA`; price ~95% null `target`. Both return `verdict=INSUFFICIENT_DATA`, no `values`.
+7. Quarterly consumers (opportunity) average the matching monthly price points.
 
-- Same modeled-component path with monthly bundles: `seasonal_period` 12, `history_tail` ~120 months. `rice` hist gradient boosting, `tomato`/`banana` random forest.
-- Up to three future monthly values are returned.
-- Red onion has **no price bundle at all** — it stays `INSUFFICIENT_DATA` and value-free.
-- Quarterly consumers (opportunity, any future rice gap) average the matching monthly price points.
+Feature engineering is **not** redone at request time — the `prepared/` tables are the contract. Regenerating them is an offline step documented in the new `ml/artifacts/README.md`.
 
-### Opportunity
+### Opportunity — driven by `config/opportunity_scoring_config.json`
 
-- Opportunity is computed across all five CALABARZON provinces for one commodity.
-- The earliest quarter shared by demand, supply, and price is selected.
-- Demand, inverse supply/scarcity, and price are independently converted to province-relative percentile scores.
-- Confidence uses `HIGH=100`, `MODERATE=60`, and `NONE=0`.
-- Configured weights are demand `0.35`, scarcity `0.25`, price `0.20`, and confidence `0.10`; weights are renormalized over the included configured components.
-- Classifications are `HIGH_OPPORTUNITY`, `UNDERSUPPLY_LEANING`, `BALANCED`, `OVERSUPPLY_LEANING`, and `SEVERE_OVERSUPPLY`.
-- Any missing demand, supply, price, or confidence value returns `INSUFFICIENT_DATA` with no score or classification.
-- The result is a peer-relative decision-support score, not learned ground truth and not a physical supply gap.
+That file is authoritative. As committed (schema `3.2`):
+
+| Component (config key) | Weight | Direction | Notes |
+|---|---|---|---|
+| `demand_pressure_index` | 0.35 | higher_better | from the demand forecast row |
+| `supply_gap_or_scarcity_index` | 0.25 | higher_better | inverse supply / scarcity |
+| `price_opportunity_index` | 0.20 | higher_better | from the price forecast |
+| `market_flow_dependence_index` | 0.10 | higher_better | **optional** — `config/commodity_flow_methodology.json`; omit if absent |
+| `forecast_confidence_index` | 0.10 | higher_better | `HIGH=100 / MODERATE=60 / NONE=0` |
+
+Policy from the file: normalize every input to 0–100 before combining; never subtract FIES pesos from supply MT; weights are transparent config, not learned ground truth. Renormalize weights over the components actually present (drop `market_flow` when unavailable).
+
+- Compute across all five provinces for one commodity; select the earliest quarter shared by demand, supply, and price.
+- Classifications: `HIGH_OPPORTUNITY`, `UNDERSUPPLY_LEANING`, `BALANCED`, `OVERSUPPLY_LEANING`, `SEVERE_OVERSUPPLY`.
+- Any missing demand / supply / price / confidence input → `INSUFFICIENT_DATA`, no score (Red Onion always).
+- The result is a peer-relative decision-support score — not ground truth, not a physical supply gap.
 
 ---
 
 ## 4. Sprint Roadmap
+
+**State after the two 2026-09-08 re-baselines:** Sprints 0 / 0.5 / 1 done (0.5 partial). Sprint 2 is split 2a/2b/2c and is where active work sits. Sprints 3–6 keep their shape; the artifact drop mostly *shrinks* their scope:
+
+| Sprint | Net effect of the artifact drop |
+|---|---|
+| 3 | Methodology endpoint is now a read of `reports/methodology_registry.json` + `config/*`. Demand-provenance contract split matters only if the optional rice MT benchmark is built. Task 3.2 moves ahead of 3.1. |
+| 4 | Adds **Task 4.0** — restore `ml/artifacts/market_coordinates/*.csv` (removed in the drop) and author `config/market_recommendation_config.json` (never existed). No "rice-gap" map layer unless 3.1 built it. |
+| 5 | Evidence UI is richer/cheaper — `reports/*` gives seasonal-naive baselines and demand `province_holdout` for free. Otherwise unchanged. |
+| 6 | Demand regression is one index path (+ optional benchmark). Add `registry.diagnostics` empty check and per-component `source` / unit checks. |
 
 ## Sprint 0 — Repository and Model Audit — COMPLETE
 
@@ -149,14 +182,15 @@ None of the logic in this section is implemented yet. It is the design Sprint 2a
 
 **Delivered:**
 
-- [x] Artifact inventory — bundles committed under `ml/artifacts/{demand,supply,price}/`; contract documented in `ml/artifacts/README.md`
-- [x] Four-commodity demand/supply/price verdict matrix (see Section 1)
-- [x] Province and frequency constraints (see Global Constraints)
-- [x] RAG source and market-data inventory (`data/raw/*.pdf`, `ml/artifacts/market_coordinates/`)
-- [ ] Standalone `docs/architecture/sprint-0-audit.md` — not present; audit content folded into Section 1 of this file
+- [x] Artifact inventory — `ml/artifacts/{demand,supply,price}/`, `prepared/`, `config/`, `reports/` committed; `reports/dataset_inventory.csv` lists the (external, uncommitted) raw sources
+- [x] Four-commodity demand/supply/price verdict matrix — `reports/unified_deployment_summary.csv`, Section 1
+- [x] Province and frequency constraints (see Global Constraints), `reports/methodology_registry.json`
+- [x] RAG source inventory (`data/raw/*.pdf`)
+- [ ] `ml/artifacts/README.md` was removed in the artifact replacement — rewrite for the new layout (Task 2a.1)
+- [ ] `ml/artifacts/market_coordinates/` was removed — restore in Sprint 4
 - [ ] `schema_version` `3.2` is *stamped* on bundles but *not validated* at load — deferred to Sprint 2a
 
-**Exit evidence:** The artifact bundles and forecast/RAG contracts are committed; `ml/artifacts/README.md` and `ml/demand/README.md` document them.
+**Exit evidence:** artifact bundle + feature tables + reports committed; `ml/demand/README.md` and `reports/methodology_registry.json` document methodology.
 
 ## Sprint 0.5 — Shared Contract Freeze — PARTIAL
 
@@ -195,66 +229,73 @@ None of the logic in this section is implemented yet. It is the design Sprint 2a
 
 ## Sprint 2 — split into 2a / 2b / 2c
 
-The original single Sprint 2 assumed M02/M03/M04 were already "Implemented." Against commit `f07633a` they are registry-and-contract only (2a), nonexistent (2b), and stubs (2c). The three sub-sprints are ordered: **2a → 2b → 2c**. The optional rice FIES/XGBoost benchmark and physical MT `supply_gap_mt` are **removed from Sprint 2** and folded into Sprint 3 (Task 3.1), since they need uncommitted `data/processed/` inputs and an `xgboost` runtime dependency.
+The original single Sprint 2 assumed M02/M03/M04 were "Implemented." They are registry-and-contract only (2a), nonexistent (2b), and stubs (2c). Order: **2a → 2b → 2c**. The optional rice FIES/XGBoost benchmark and physical MT `supply_gap_mt` stay **out of Sprint 2** (Sprint 3, Task 3.1).
 
 ### Recommended build order
 
-**Step 0 — fix the silent demand-bundle load failure (do this first).** `ml/artifacts/demand/tomato.joblib` and `red_onion.joblib` pickle an XGBoost estimator. `xgboost>=3.4.1` is declared in `pyproject.toml` and pinned in `uv.lock`, but a drifted `.venv` (no `uv sync`) makes the bundles fail to unpickle at startup; `ArtifactRegistry._load_bundle` swallows the error, so Tomato and Red Onion demand silently degrade to `INSUFFICIENT_DATA` instead of `INDICATIVE_PROXY`.
+**Step 0 — environment + artifact readiness.**
 
-- [x] Run `uv sync` — restores `xgboost` from the lockfile (no `pyproject.toml`/`uv.lock` change needed).
-- [x] Regression test `test_all_committed_artifact_bundles_load` asserts **all 11 committed bundles register** (Rice/Tomato/Red Onion/Banana demand + supply; Rice/Tomato/Banana price).
-- [ ] Longer-term cleanup (Task 2a.1 / retraining): re-dump the shared `VEG` demand bundle without a pickled XGBoost object so the forecast-service store stays lightweight per `ml/artifacts/README.md` and needs no `xgboost` at runtime.
+- [x] `uv sync` — restored `xgboost==3.4.1` from `uv.lock`; the demand `.joblib` bundles unpickle again (a drifted `.venv` had been silently degrading Tomato/Red Onion demand to `INSUFFICIENT_DATA`).
+- [x] Regression test `test_all_committed_artifact_bundles_load` (asserts every committed bundle registers). **Needs rewriting** for the new layout — the old version hardcodes 11 bundles at old paths; the new registry has `demand/{rice,vegetable_shared,banana}` + `supply/*` + `price/*` driven by `config/commodity_demand_registry.json` and filename convention.
+- [ ] **Decision (a):** restore the 4 forecasting model joblibs removed in the artifact replacement — `supply/rice`, `supply/tomato`, `price/tomato`, `price/banana`. Until they land, those four fall back to seasonal-naive (Section 3).
 
 **Then, within Sprint 2a:**
 
 | Order | Work | Notes |
 |---|---|---|
-| 1 | **Supply + price values** — `_modeled_component()`, populate `values`/`unit`/`frequency`/`confidence`/`source`/`data_as_of` (Task 2a.2) | Zero blockers; bundles are self-contained (`model` + `history_tail` + `seasonal_period`). Immediately returns real numbers for rice/tomato/banana. |
-| 2 | **`/forecast/evidence`** endpoint (Task 2a.4) | Small, independent — pure metadata read; can even precede #1. |
-| 3 | **Registry hardening to schema `3.2`** — rest of Task 2a.1 | Fold in with #1; motivated by the Step 0 bug. |
-| 4 | **Demand proxy series** (Task 2a.3) | Do last in 2a — needs the Option A vs B decision (Section 2) and the FIES/LFS table to generate the offline series. Demand honestly stays verdict-only until it lands. |
+| 1 | **Registry loads the full bundle** (Task 2a.1) | Extend `ArtifactRegistry` to read `prepared/`, `config/`, `reports/` and validate schema `3.2`. Everything downstream needs this. Rewrite `ml/artifacts/README.md`. |
+| 2 | **Demand values** (Task 2a.3) | Now the *easy* one — read `prepared/quarterly_demand_pressure_index.csv` + `future_demand_pressure_3q.csv`. No model call. |
+| 3 | **Supply + price values** (Task 2a.2) | `_forecast_series_component()` over `prepared/*_features.csv`: observed `target` + model-or-seasonal-naive forecast. |
+| 4 | **`/forecast/evidence`** (Task 2a.4) | Independent — assemble from `reports/*` + joblib metadata. Can run in parallel with 2–3. |
 
-**Then 2b (opportunity engine)** — mechanical once 2a gives it values sharing a quarter — **then 2c (dashboard + forecasting UI)**.
+**Then 2b (opportunity engine)** — mostly wiring `config/opportunity_scoring_config.json` — **then 2c (dashboard + forecasting UI)**.
 
-**Do not start with 2c.** The pages are only as good as the API behind them; building them against verdict-only responses guarantees rework.
+**Do not start with 2c.** The pages are only as good as the API behind them.
 
 ## Sprint 2a — Forecast-Value + Evidence Backend
 
 **Modules:** M02, M09 backend
 
-**Goal:** `/forecast/outlook` returns real `values` for every component that has a usable artifact, and a new `/forecast/evidence` exposes model provenance. Demand serves a committed precomputed proxy series (Section 2, Option A). No frontend work.
+**Goal:** `/forecast/outlook` returns real `values` (demand index, supply MT, price PHP/kg) for every component with usable data, and a new `/forecast/evidence` exposes model provenance. No frontend work.
 
 **Files:**
 
-- Modify: `ml/forecasting/artifact_registry.py` (schema `3.2` validation: `schema_version`, `commodity` identity, `model`/`strategy` presence for modeled components, `features`, `history_tail`, `metrics`, `limitations`)
-- Modify: `ml/forecasting/forecast_service.py` (add `_modeled_component()` for supply/price, `_demand_component()` reading the committed proxy series, `evidence()`)
-- Modify: `apps/api/app/schemas/forecast.py` (populate `values`/`unit`/`frequency`/`confidence`/`source`/`data_as_of`; add `demand_label`; add `EvidenceResponse`)
-- Modify: `apps/api/app/routers/forecast.py` (add `GET /forecast/evidence`)
-- Create: `ml/artifacts/demand/proxy_series.csv` (or `data/processed/demand/`) — province × quarter Estimated Demand Proxy, produced offline; document the generator in `ml/artifacts/README.md`
-- Test: `apps/api/tests/test_artifact_registry.py`, `test_forecast_service.py`, `test_forecast_router.py`, new `test_forecast_evidence.py`
+- Modify: `ml/forecasting/artifact_registry.py` — load `prepared/*.csv`, `config/*.json`, `reports/*`; schema-`3.2` validation; `diagnostics` list
+- Modify: `ml/forecasting/forecast_service.py` — `_demand_component()`, `_forecast_series_component()` (supply/price), `evidence()`
+- Modify: `ml/forecasting/domain.py` — demand registry / label lookup helpers if needed
+- Modify: `apps/api/app/schemas/forecast.py` — populate `values`/`unit`/`frequency`/`confidence`/`source`/`data_as_of`; add `demand_label`; add `EvidenceResponse` + router model
+- Modify: `apps/api/app/routers/forecast.py` — add `GET /forecast/evidence`
+- Create: `ml/artifacts/README.md` — document the new layout (`demand`/`supply`/`price`/`prepared`/`config`/`reports`) and the offline regeneration step
+- Test: `apps/api/tests/test_artifact_registry.py` (rewrite), `test_forecast_service.py`, `test_forecast_router.py`, new `test_forecast_evidence.py`
 
-### Task 2a.1 — Harden the artifact registry to schema 3.2
+### Task 2a.1 — Registry loads the full bundle + schema-3.2 validation
 
-- [ ] Validate `schema_version == "3.2"`, `commodity` matches the filename slug and `COMMODITIES`, and required keys per `kind`.
-- [ ] Fail loud in a dev/strict mode; keep prod behavior (skip + warn) but surface skipped bundles in a `registry.diagnostics` list.
-- [ ] Assert the shared `VEG` estimator is loaded once and keyed to both Tomato and Red Onion.
+- [ ] Load and cache: joblib bundles, `prepared/*_features.csv` (as province-indexed frames), the two demand-pressure tables, `config/*.json`, `reports/*` needed for evidence.
+- [ ] Validate `schema_version == "3.2"` on bundles and `config/opportunity_scoring_config.json`; `commodity` matches the filename slug and `COMMODITIES`; required keys per `kind`.
+- [ ] Keep prod behavior (skip + warn on a bad artifact) but expose everything skipped in `registry.diagnostics`; add a strict mode that raises (for tests/CI).
+- [ ] `vegetable_shared.joblib` is loaded once and mapped to both Tomato and Red Onion via `config/commodity_demand_registry.json`.
+- [ ] Rewrite `test_all_committed_artifact_bundles_load` to drive off the registry + config, not a hardcoded list.
+- [ ] Write `ml/artifacts/README.md`.
 
-### Task 2a.2 — Generate supply and price forecast values
+### Task 2a.2 — Supply and price forecast values
 
-- [ ] `_modeled_component()` returns observed `history_tail` + up to 3 future periods via the fitted `model`, else seasonal-naive via `seasonal_period`.
-- [ ] Populate `unit`, `frequency` (`quarterly` supply / `monthly` price), `source`, `data_as_of`, and `metrics`-derived `confidence` (`HIGH`/`MODERATE`/`NONE`).
-- [ ] Keep Red Onion supply and price value-free (`INSUFFICIENT_DATA`).
-- [ ] Prevent stale values across requests — recompute or cache per `(commodity, province)` deterministically.
+- [ ] `_forecast_series_component()` per Section 3: observed `target` tail + 3 future periods (model when the joblib is present and not `INSUFFICIENT_DATA`, else seasonal-naive from `lag_4`/`lag_12`).
+- [ ] Populate `unit` (`MT` / `PHP/kg`), `frequency` (`quarterly` / `monthly`), `source` (`learned_model:<strategy>` / `seasonal_naive`), `data_as_of` (last observed date), `confidence` (`PASS→HIGH`, `CAUTION→MODERATE`, else `NONE`), `metrics` from `reports/*_model_metrics.csv` (the deployed model's row).
+- [ ] Red Onion supply and price stay `INSUFFICIENT_DATA`, no `values`.
+- [ ] Deterministic across repeated requests; no stale values after a failed/changed request.
 
-### Task 2a.3 — Serve the demand proxy series
+### Task 2a.3 — Demand values from the committed index
 
-- [ ] Commit the offline-generated province × quarter proxy series; `_demand_component()` reads it, never calls the joblib estimator at request time.
-- [ ] Label every demand response **Estimated Demand Proxy**; carry the bundle `verdict` (`USABLE_PROXY` rice / `INDICATIVE_PROXY` others) and `limitations`.
-- [ ] `data_as_of` is one documented representation (the series' last observed quarter).
+- [ ] `_demand_component()` reads `prepared/quarterly_demand_pressure_index.csv` + `future_demand_pressure_3q.csv`, filters `(commodity, province)`, returns observed tail + 3 forecast quarters.
+- [ ] `unit = "index (base≈100)"`, `frequency = "quarterly"`, `source = "demand_pressure_index"`, `data_as_of` = last observed quarter.
+- [ ] `demand_label` from `config/commodity_demand_registry.json`; global label stays **Estimated Demand Proxy**; carry the joblib `verdict` + `limitations`.
+- [ ] Map the forecast-row `confidence` string to the `Confidence` enum for opportunity.
+- [ ] Never call the demand `.joblib` at request time.
 
 ### Task 2a.4 — `GET /forecast/evidence`
 
-- [ ] `ForecastService.evidence()` returns, per commodity × component: target, model/`selected_model`, `metrics`, verdict + reason, frequency, province resolution, source, `schema_version`, `limitations`.
+- [ ] `ForecastService.evidence()` returns, per commodity × component: target, model / `selected_model`, `metrics` (+ seasonal-naive baseline where present), verdict + reason, frequency, province resolution, `source`, `schema_version`, `limitations`, and the demand `province_holdout` table where available.
+- [ ] Draw from `reports/{supply,price}_deployment_verdicts.csv`, `*_model_metrics.csv`, `demand_validation_summary.csv`, `unified_deployment_summary.csv`, and the demand `*_validation_report.md`.
 - [ ] Missing models/metrics render as explicitly unavailable, not zero.
 - [ ] Tomato and Red Onion demand show the same shared `VEG` evidence.
 
@@ -263,36 +304,37 @@ The original single Sprint 2 assumed M02/M03/M04 were already "Implemented." Aga
 ```powershell
 cd apps/api
 uv run pytest tests/test_artifact_registry.py tests/test_forecast_service.py tests/test_forecast_router.py tests/test_forecast_evidence.py
-uv run ruff check app ../../ml
+cd ../..; uv run ruff check apps/api/app ml
 ```
 
-**Exit evidence:** `curl /forecast/outlook?commodity=Rice&province=Laguna` returns demand/supply/price `values`; `curl /forecast/evidence` returns the full 4×3 matrix; Red Onion supply/price stay value-free.
+**Exit evidence:** `GET /forecast/outlook?commodity=Rice&province=Laguna` returns demand (index), supply (MT), price (PHP/kg) `values`; `GET /forecast/evidence` returns the full 4×3 matrix; Red Onion supply/price stay value-free; Red Onion demand returns an index series.
 
 ## Sprint 2b — Opportunity Engine
 
 **Modules:** M04 backend
 
-**Goal:** replace `_insufficient_data_opportunity()` with the configured peer-relative scorer from Section 3. Depends on 2a (needs demand/supply/price values sharing a quarter).
+**Goal:** replace `_insufficient_data_opportunity()` with the peer-relative scorer configured by `ml/artifacts/config/opportunity_scoring_config.json` (Section 3). Depends on 2a.
 
 **Files:**
 
-- Create: `ml/forecasting/opportunity.py`, `ml/forecasting/opportunity_config.json` (weights: demand `0.35`, scarcity `0.25`, price `0.20`, confidence `0.10`)
+- Create: `ml/forecasting/opportunity.py` (the scorer reads the committed config via the registry — **no new config file**)
 - Modify: `ml/forecasting/forecast_service.py` (call the scorer in `outlook()`)
-- Modify: `apps/api/app/schemas/forecast.py` (`OpportunityComponent`: `score`, `classification`, `shared_quarter`, per-component breakdown)
+- Modify: `apps/api/app/schemas/forecast.py` (`OpportunityComponent`: `score`, `classification`, `shared_quarter`, per-component breakdown, `weights_used`)
 - Test: new `apps/api/tests/test_opportunity.py`
 
 ### Task 2b.1 — Peer-relative scoring
 
+- [ ] Read components/weights/directions/policy from `config/opportunity_scoring_config.json` (do not hardcode).
 - [ ] Compute across all five provinces for one commodity; select the earliest quarter shared by demand, supply, and price.
-- [ ] Convert demand, inverse-supply (scarcity), and price to province-relative percentile scores; confidence `HIGH=100 / MODERATE=60 / NONE=0`.
-- [ ] Renormalize configured weights over the components actually present.
+- [ ] Normalize each input to 0–100 province-relative; `market_flow_dependence_index` is optional — drop it and renormalize weights when `config/commodity_flow_methodology.json` yields nothing.
+- [ ] `forecast_confidence_index`: `HIGH=100 / MODERATE=60 / NONE=0`.
 - [ ] Classifications: `HIGH_OPPORTUNITY`, `UNDERSUPPLY_LEANING`, `BALANCED`, `OVERSUPPLY_LEANING`, `SEVERE_OVERSUPPLY`.
 
 ### Task 2b.2 — Fail closed
 
-- [ ] Any missing demand / supply / price / confidence → `INSUFFICIENT_DATA`, no score, no classification (Red Onion always).
-- [ ] Return the component breakdown for the future "Why this result?" UI.
-- [ ] Document that this is a peer-relative decision-support score — not ground truth, not a physical supply gap.
+- [ ] Any missing demand / supply / price / confidence → `INSUFFICIENT_DATA`, no score (Red Onion always).
+- [ ] Return the component breakdown + `weights_used` for the future "Why this result?" UI.
+- [ ] Never subtract FIES index points from supply MT; document that the score is peer-relative decision support, not ground truth.
 
 **Verification:**
 
@@ -343,51 +385,44 @@ npm run build
 
 **Follow-up acceptance:** Sprint 3 must make demand provenance and any future rice benchmark mode explicit before GIS or chatbot reuse the values.
 
-## Sprint 3 — Forecast Contract Hardening, Optional Rice Benchmark, and Explainability
+## Sprint 3 — Forecast Contract Hardening, Explainability, Optional Rice Benchmark
 
 **Modules:** M02, M04, M05, part of M09 and M10
 
-**Absorbed from the old Sprint 2:** the optional rice FIES/XGBoost benchmark path and physical `supply_gap_mt` (Task 3.1). This requires committing `data/processed/demand/` inputs and adding `xgboost` to the API runtime, or vendoring `ml/demand/pipeline/` behind a feature flag — a deliberate, isolated decision, not a value-generation prerequisite for Sprints 2a–2c.
+**Revision (artifact drop):** demand provenance is now simple — one committed index path — so Task 3.1's `prepared_proxy_snapshot` vs `fies_xgboost_benchmark` split only matters *if* the optional rice MT benchmark is built. Methodology (Task 3.2) is now largely a read of committed files: `reports/methodology_registry.json`, `config/commodity_flow_methodology.json`, `config/opportunity_scoring_config.json`.
 
 **Files:**
 
-- Modify: `ml/forecasting/forecast_service.py`
-- Modify: `apps/api/app/schemas/forecast.py`
-- Modify: `apps/api/app/routers/forecast.py`
-- Modify: `apps/web/src/types/forecast.ts`
-- Modify: `apps/web/src/app/forecasting/page.tsx`
+- Modify: `ml/forecasting/forecast_service.py`, `apps/api/app/schemas/forecast.py`, `apps/api/app/routers/forecast.py`
+- Modify: `apps/web/src/types/forecast.ts`, `apps/web/src/app/forecasting/page.tsx`
 - Create: `apps/web/src/app/components/WhyThisResult.tsx`
-- Test (under `apps/api/tests/`): `test_forecast_service.py`, `test_forecast_router.py`, `test_forecast_evidence.py`, `test_opportunity.py`
-- Test: focused frontend component/helper tests under `apps/web/`
+- Test (under `apps/api/tests/`): `test_forecast_service.py`, `test_forecast_router.py`, `test_forecast_evidence.py`, `test_forecast_methodology.py`, `test_opportunity.py`; focused frontend tests
 
-### Task 3.1 — Optional rice benchmark + demand provenance
+### Task 3.2 — Methodology endpoint + "Why this result?" (do this first now)
 
-- [ ] Decide and record: commit `data/processed/demand/` inputs + add `xgboost`, or defer the benchmark entirely.
-- [ ] If built: load the pipeline only when inputs exist; API starts with `demand_pipeline=None` otherwise.
-- [ ] Add contract fields that distinguish `prepared_proxy_snapshot` from `fies_xgboost_benchmark` without changing the `Estimated Demand Proxy` label.
-- [ ] Keep the physical `supply_gap_mt` limited to benchmarked rice; never generalize it to the proxy-index commodities.
-- [ ] Normalize `data_as_of` to one documented representation across both paths.
-- [ ] Ensure evidence describes the model used to create each output rather than implying request-time inference where none occurs.
-
-### Task 3.2 — Complete methodology and explanation
-
-- [ ] Implement `GET /forecast/methodology` from the cached methodology and opportunity configuration.
-- [ ] Add “Why this result?” for demand, supply, price, rice gap, and opportunity.
-- [ ] Show model/verdict, leading available factors, confidence reason, source, frequency, resolution, data coverage, and limitations.
+- [ ] `GET /forecast/methodology` assembled from `reports/methodology_registry.json` + `config/opportunity_scoring_config.json` + `config/commodity_flow_methodology.json` (all cached by the registry).
+- [ ] "Why this result?" for demand, supply, price, opportunity: model/verdict, leading available factors, confidence reason, source, frequency, province resolution, data coverage, limitations.
 - [ ] State explicitly that proxy estimates and opportunity associations are not causal findings.
-- [ ] Do not invent confidence intervals; omit them or label them unavailable when artifacts do not provide them.
+- [ ] Do not invent confidence intervals; label unavailable when artifacts don't provide them.
+
+### Task 3.1 — Optional rice FIES/XGBoost benchmark + physical `supply_gap_mt`
+
+- [ ] Decide and record (ADR): build it, or defer. `reports/dataset_inventory.csv` confirms the raw FIES-LFS files exist externally; `ml/demand/pipeline/` is the reference implementation.
+- [ ] If built: commit `data/processed/demand/` inputs, load the pipeline only when present (`demand_pipeline=None` otherwise), add contract fields distinguishing the benchmark from the index path **without** changing the `Estimated Demand Proxy` label.
+- [ ] Keep physical `supply_gap_mt` rice-only; never apply it to the index-proxy commodities.
+- [ ] Normalize `data_as_of` across both paths.
 
 ### Task 3.3 — Preserve analytical invariants
 
-- [ ] Keep red onion supply/price value-free and opportunity unavailable.
-- [ ] Keep physical `supply_gap_mt` limited to benchmarked rice.
-- [ ] Keep peer-relative opportunity scoring unchanged unless configuration and tests are updated together.
-- [ ] Prevent stale component values after a failed or changed request.
+- [ ] Red Onion supply/price stay value-free; Red Onion opportunity unavailable (its demand index alone is not enough).
+- [ ] `supply_gap_mt` (if it exists) stays rice-only.
+- [ ] Opportunity scoring changes only when `config/opportunity_scoring_config.json` and `test_opportunity.py` change together.
+- [ ] No stale component values after a failed or changed request.
 
 **Verification:**
 
 ```powershell
-cd apps/api; uv run pytest tests/test_forecast_service.py tests/test_forecast_router.py tests/test_forecast_evidence.py tests/test_opportunity.py; cd ../..
+cd apps/api; uv run pytest tests/test_forecast_service.py tests/test_forecast_router.py tests/test_forecast_evidence.py tests/test_forecast_methodology.py tests/test_opportunity.py; cd ../..
 # if the optional benchmark landed: cd ml/demand; uv run pytest tests; cd ../..
 cd apps/web
 npm run test
@@ -402,22 +437,23 @@ npm run build
 
 **Modules:** M06, M07, part of M10
 
+**Revision (artifact drop):** `ml/artifacts/market_coordinates/{CALABARZON_market_coordinates,municipality_centroids}.csv` were **removed** and must be restored (from git history — `git log --diff-filter=D --stat -- ml/artifacts/market_coordinates/` then `git checkout <commit>~1 -- <path>` — or re-sourced) as **Task 4.0** before anything else here. There is no `market_recommendation_config.json` in the repo; Sprint 4 must author the ranking config as `ml/artifacts/config/market_recommendation_config.json` (schema `3.2`, sibling of the other configs).
+
 **Files:**
 
-- Create: `apps/web/src/app/mapping/page.tsx`
-- Create: `apps/web/src/gis-map/` focused map/data adapters
-- Create: `markets/registry.py`, `markets/ranking.py`
-- Create: `apps/api/app/routers/markets.py`
-- Create: `apps/web/src/app/markets/page.tsx`
-- Reuse: `ml/artifacts/market_coordinates/*.csv`, `market_recommendation_config.json`
+- Restore: `ml/artifacts/market_coordinates/*.csv`
+- Create: `ml/artifacts/config/market_recommendation_config.json`
+- Create: `apps/web/src/app/mapping/page.tsx`, `apps/web/src/gis-map/` map/data adapters
+- Create: `markets/registry.py`, `markets/ranking.py`, `apps/api/app/routers/markets.py`, `apps/api/app/schemas/markets.py`
+- Create: `apps/web/src/app/markets/page.tsx`, `apps/web/src/types/markets.ts`
 - Test: new market registry/ranking/API tests and frontend map/market helper tests
 
 ### Task 4.1 — Build a province-honest analytics map
 
-- [ ] Load or vendor the required CALABARZON boundary assets through the existing frontend pattern.
-- [ ] Add demand, supply, price, opportunity, and rice-gap layers only when the selected response supports them.
+- [ ] Load or vendor the CALABARZON boundary assets (embed as a static asset; the CDN allowlist does not cover arbitrary tile hosts).
+- [ ] Add demand, supply, price, and opportunity layers only when the selected response supports them (no rice-gap layer unless Task 3.1 built it).
 - [ ] Label municipality drill-down with the source province and true province resolution.
-- [ ] Show loading, API error, unsupported layer, and insufficient-data states without retaining stale map values.
+- [ ] Loading / API error / unsupported layer / insufficient-data states; no stale map values.
 
 ### Task 4.2 — Build the curated market registry and ranking
 
@@ -449,6 +485,8 @@ npm run build
 ## Sprint 5 — Model Evidence UI and Contextual Ask AgriWise
 
 **Modules:** M08, M09, part of M10
+
+**Revision (artifact drop):** `/forecast/evidence` (built in 2a.4) now carries seasonal-naive baselines, `improvement_vs_naive_pct`, and the demand `province_holdout` table from `reports/*` — surface these in Task 5.1. No new backend data needed here.
 
 **Files:**
 
@@ -503,10 +541,10 @@ npm run build
 ### Task 6.1 — Analytical regression
 
 - [ ] Verify every commodity/province combination for demand, supply, price, opportunity, and warnings.
-- [ ] Run both rice demand modes: clean-checkout fallback and optional benchmark pipeline.
-- [ ] Confirm supply and price frequency, province resolution, and red onion insufficient-data behavior.
-- [ ] Confirm opportunity uses a shared quarter, configured weights, and no incompatible-unit subtraction.
-- [ ] Confirm cached registry/service behavior and deterministic repeated responses.
+- [ ] Verify the demand index path for all four commodities; if the Sprint 3 rice MT benchmark was built, verify both modes and that `demand_pipeline=None` degrades cleanly.
+- [ ] Confirm supply/price frequency + unit, province resolution, model-vs-seasonal-naive `source`, and Red Onion supply/price value-free behavior.
+- [ ] Confirm opportunity reads `config/opportunity_scoring_config.json`, uses a shared quarter, renormalizes weights, and never subtracts incompatible units.
+- [ ] Confirm cached registry/service behavior, `registry.diagnostics` empty, and deterministic repeated responses.
 
 ### Task 6.2 — End-to-end user journey
 
@@ -571,8 +609,8 @@ The MVP is complete when an anonymous user can:
 
 1. save municipality and crop preferences locally;
 2. view actual CALABARZON outlook responses for all four commodities;
-3. distinguish observed supply/price values, predictions, prepared demand proxies, and optional benchmarked rice estimates;
-4. see verdict, confidence, source, frequency, province resolution, data-as-of, and model evidence;
+3. distinguish observed supply/price values, model vs. seasonal-naive forecasts, the demand-pressure index proxy, and (if built) the optional benchmarked rice MT estimate;
+4. see verdict, confidence, source, frequency, unit, province resolution, data-as-of, and model evidence;
 5. understand why a result or opportunity classification was shown;
 6. view supported analytics on a province-honest GIS map;
 7. discover and compare curated public markets with transparent ranking limitations;
