@@ -45,23 +45,43 @@ embeds fully.
 
 ## 4. Packaging
 
-Convert the repo to a **uv workspace** so `rag/` is a standalone, independently testable package
-that the API imports cleanly.
+Consolidate all Python into **one uv project rooted at the repo root**, exposing two flat,
+independently testable packages: `rag` (RAG pipeline) and `app` (FastAPI backend). One virtual
+environment, one lockfile — right-sized for a hackathon and keeps `rag/` a flat directory.
 
-- Root `pyproject.toml`: `[tool.uv.workspace] members = ["apps/api", "rag"]`.
-- `rag/pyproject.toml`: package `agriwise-rag`, Python `>=3.12`, dependencies
-  `pypdf`, `sentence-transformers`, `chromadb`, `groq`, `pydantic`.
-- `apps/api/pyproject.toml`: add `agriwise-rag` as a dependency;
-  `[tool.uv.sources] agriwise-rag = { workspace = true }`.
-- A single lockfile at the workspace root; `uv run` from either package resolves it.
+- Root `pyproject.toml`: project `agriwise`, Python `>=3.12`. Runtime deps: `fastapi`,
+  `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `pypdf`, `sentence-transformers`,
+  `chromadb`, `groq`. Dev deps: `pytest`, `httpx`, `ruff`, `reportlab` (test-fixture PDFs).
+- Hatchling build exposing both packages:
+  ```toml
+  [build-system]
+  requires = ["hatchling"]
+  build-backend = "hatchling.build"
 
-`ml/` is not added to the workspace in this change.
+  [tool.hatch.build.targets.wheel]
+  packages = ["rag", "apps/api/app"]
+  ```
+  `uv sync` editable-installs the root project, so `import rag` and `import app` resolve from
+  anywhere in the repo — no `sys.path` shims, no `--app-dir`.
+- Root `[tool.pytest.ini_options] testpaths = ["apps/api/tests", "rag/tests"]`.
+- The pre-existing `apps/api/pyproject.toml`, `apps/api/uv.lock`, and `apps/api/.python-version`
+  from the scaffold are removed; `.python-version` moves to the repo root.
+- `ml/` and `markets/` are not added as packages in this change.
+
+Commands (all from the repo root):
+
+```powershell
+uv sync
+uv run python -m rag.ingest --rebuild
+uv run uvicorn app.main:app --reload
+uv run pytest
+uv run ruff check .
+```
 
 ## 5. Module Layout
 
 ```
-rag/
-├── pyproject.toml
+rag/                   # flat package, importable as `rag`
 ├── __init__.py
 ├── config.py          # RagConfig dataclass, built from env or passed explicitly
 ├── ingest.py          # offline CLI: python -m rag.ingest
@@ -73,7 +93,8 @@ rag/
 ├── generator.py       # Generator: messages -> answer string (Groq)
 └── pipeline.py        # RagPipeline: ties retriever + prompt + generator; returns RagAnswer
 
-apps/api/app/
+apps/api/app/          # flat package, importable as `app`
+├── config.py          # + RAG settings and build_rag_config(settings)
 ├── routers/rag.py     # POST /rag/query
 ├── schemas/rag.py     # RagQueryRequest, RagQueryResponse, Citation, ChatMessage
 └── main.py            # lifespan: build RagPipeline once, store on app.state
@@ -82,6 +103,8 @@ apps/web/src/
 ├── app/chat/page.tsx  # multi-turn chat UI
 ├── lib/rag.ts         # typed client for POST /rag/query
 └── types/rag.ts       # request/response types mirroring schemas/rag.py
+
+rag/tests/  and  apps/api/tests/   # pytest suites
 ```
 
 ## 6. Ingestion Pipeline (`rag/ingest.py`)
