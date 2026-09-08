@@ -98,7 +98,9 @@ class ArtifactRegistry:
                 limitations=list(bundle.get("limitations", [])),
             )
         except Exception:
-            logger.warning("failed to load artifact bundle %s; skipping", bundle_path, exc_info=True)
+            logger.warning(
+                "failed to load artifact bundle %s; skipping", bundle_path, exc_info=True
+            )
             return
 
         self._bundles[(metadata.commodity, component)] = metadata
