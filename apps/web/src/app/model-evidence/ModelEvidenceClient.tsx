@@ -94,38 +94,42 @@ function EvidenceCard({ evidence: c }: { evidence: EvidenceComponent }) {
       ) : (
         <>
           {metrics.length > 0 && (
-            <table className="w-full">
-              <tbody>
-                {metrics.map(([k, v]) => (
-                  <tr key={k}>
-                    <td className="text-muted">{k}</td>
-                    <td className="text-right">{num(v)}</td>
-                    {c.baseline[k] !== undefined && (
-                      <td className="text-right text-muted">naïve {num(c.baseline[k])}</td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="-mx-1 overflow-x-auto px-1">
+              <table className="w-full min-w-[12rem]">
+                <tbody>
+                  {metrics.map(([k, v]) => (
+                    <tr key={k}>
+                      <td className="text-muted">{k}</td>
+                      <td className="text-right">{num(v)}</td>
+                      {c.baseline[k] !== undefined && (
+                        <td className="text-right text-muted">naïve {num(c.baseline[k])}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {c.province_holdout.length > 0 && (
             <details>
               <summary className="cursor-pointer text-[var(--color-accent-600)]">
                 Province hold-out
               </summary>
-              <table className="mt-1 block w-full overflow-x-auto">
-                <tbody>
-                  {c.province_holdout.map((row, i) => (
-                    <tr key={i}>
-                      {Object.entries(row).map(([k, v]) => (
-                        <td key={k} className="text-right">
-                          {typeof v === "number" ? num(v) : String(v)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="-mx-1 mt-1 overflow-x-auto px-1">
+                <table className="w-full min-w-[16rem]">
+                  <tbody>
+                    {c.province_holdout.map((row, i) => (
+                      <tr key={i}>
+                        {Object.entries(row).map(([k, v]) => (
+                          <td key={k} className="text-right">
+                            {typeof v === "number" ? num(v) : String(v)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </details>
           )}
         </>
@@ -146,8 +150,8 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-muted">{label}</dt>
-      <dd className="text-right">{value}</dd>
+      <dt className="shrink-0 text-muted">{label}</dt>
+      <dd className="min-w-0 text-right [overflow-wrap:anywhere]">{value}</dd>
     </div>
   );
 }

@@ -154,17 +154,19 @@ function MarketCard({ ranked }: { ranked: RankedMarket }) {
         <summary className="cursor-pointer text-[var(--color-accent-600)]">
           Why recommended?
         </summary>
-        <table className="mt-1 w-full">
-          <tbody>
-            {Object.entries(ranked.breakdown).map(([factor, entry]) => (
-              <tr key={factor}>
-                <td className="py-0.5">{factor.replaceAll("_", " ")}</td>
-                <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
-                <td className="text-right">{(entry.score * 100).toFixed(0)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="-mx-1 mt-1 overflow-x-auto px-1">
+          <table className="w-full min-w-[14rem]">
+            <tbody>
+              {Object.entries(ranked.breakdown).map(([factor, entry]) => (
+                <tr key={factor}>
+                  <td className="py-0.5">{factor.replaceAll("_", " ")}</td>
+                  <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
+                  <td className="text-right">{(entry.score * 100).toFixed(0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </details>
 
       <div className="card-foot flex flex-wrap gap-2 text-xs">

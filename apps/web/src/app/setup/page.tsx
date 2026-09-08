@@ -9,7 +9,7 @@ import { usePreferences } from "@/lib/preferences";
 import type { Commodity, Province } from "@/types/forecast";
 
 export default function SetupPage() {
-  const { preferences, setCommodity, setProvince } = usePreferences();
+  const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
   const [commodities, setCommodities] = useState<readonly Commodity[]>(COMMODITIES);
   const [provinces, setProvinces] = useState<readonly Province[]>(PROVINCES);
   const [catalogError, setCatalogError] = useState(false);
@@ -31,6 +31,10 @@ export default function SetupPage() {
   }, []);
 
   const ready = preferences.commodity !== null && preferences.province !== null;
+
+  // Preferences load from localStorage on the client's first render; wait for
+  // the mounted flag so SSR and hydration agree on the controlled select values.
+  if (!isHydrated) return null;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">

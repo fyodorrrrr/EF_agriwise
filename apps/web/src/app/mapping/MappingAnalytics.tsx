@@ -117,7 +117,7 @@ export function MappingAnalytics() {
               the map resolves to its province—this is never a municipality forecast.
             </p>
           </div>
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex w-full flex-col gap-1 sm:w-auto sm:items-end">
             <select
               aria-label="Commodity"
               className="select"
