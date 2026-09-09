@@ -92,8 +92,8 @@ describe("Dashboard", () => {
 
     renderDashboard();
 
-    await waitFor(() => expect(screen.getByText("Rice")).toBeInTheDocument());
-    expect(screen.getByText("Tomato")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("Rice").length).toBeGreaterThan(0));
+    expect(screen.getAllByText("Tomato").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Banana").length).toBeGreaterThan(0);
     // opportunity classification surfaces on the card
     expect(screen.getAllByText(/balanced · 55.4/i).length).toBe(4);

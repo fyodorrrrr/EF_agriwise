@@ -184,7 +184,7 @@ export function ForecastingClient() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 lg:grid-cols-3">
                   {(["demand", "supply", "price"] as const).map((kind) => (
                     <div key={kind} className="flex flex-col gap-2">
                       <ComponentCard kind={kind} component={outlook[kind]} detailed />

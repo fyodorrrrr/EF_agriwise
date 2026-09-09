@@ -8,6 +8,8 @@ import { getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
 import type { Commodity, OutlookResponse, Province } from "@/types/forecast";
 import { formatQuarter, formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { Sparkline } from "@/components/forecast/Sparkline";
 
 type Row = { commodity: Commodity; outlook: OutlookResponse };
 type Status = "idle" | "loading" | "ready" | "error";
@@ -18,6 +20,29 @@ function componentSummary(outlook: OutlookResponse, kind: "demand" | "supply" | 
   const series = c.forecast?.length ? c.forecast : c.observed ?? [];
   const value = series.length ? series[series.length - 1].value : null;
   return value === null ? "—" : formatValue(value, c.unit);
+}
+
+function computeKpis(rows: Row[]) {
+  const covered = rows.filter(
+    ({ outlook }) =>
+      outlook.demand.verdict !== "INSUFFICIENT_DATA" &&
+      outlook.supply.verdict !== "INSUFFICIENT_DATA" &&
+      outlook.price.verdict !== "INSUFFICIENT_DATA" &&
+      outlook.opportunity.verdict !== "INSUFFICIENT_DATA",
+  );
+  const scored = rows.filter(({ outlook }) => outlook.opportunity.score !== null);
+  const best = scored.reduce<Row | null>(
+    (top, row) =>
+      !top || (row.outlook.opportunity.score ?? -Infinity) > (top.outlook.opportunity.score ?? -Infinity)
+        ? row
+        : top,
+    null,
+  );
+  const avgScore = scored.length
+    ? scored.reduce((sum, { outlook }) => sum + (outlook.opportunity.score ?? 0), 0) / scored.length
+    : null;
+
+  return { covered, best, avgScore };
 }
 
 export function DashboardClient() {
@@ -102,6 +127,33 @@ export function DashboardClient() {
         </p>
       )}
 
+      {status === "ready" && rows.length > 0 && (() => {
+        const { covered, best, avgScore } = computeKpis(rows);
+        return (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiCard label="Commodities tracked" value={String(COMMODITIES.length)} />
+            <KpiCard
+              label="Data coverage"
+              value={`${covered.length}/${rows.length}`}
+              sublabel="fully populated"
+            />
+            <KpiCard
+              label="Best opportunity"
+              value={best ? best.commodity : "—"}
+              sublabel={
+                best?.outlook.opportunity.classification
+                  ? best.outlook.opportunity.classification.replaceAll("_", " ").toLowerCase()
+                  : undefined
+              }
+            />
+            <KpiCard
+              label="Avg opportunity score"
+              value={avgScore === null ? "—" : avgScore.toFixed(0)}
+            />
+          </div>
+        );
+      })()}
+
       {status === "ready" &&
         rows.map(({ commodity, outlook }) => {
           const opp = outlook.opportunity;
@@ -109,13 +161,16 @@ export function DashboardClient() {
             <div key={commodity} className="card flex flex-col gap-3">
               <div className="card-head">
                 <div className="card-title">{commodity}</div>
-                {opp.verdict === "INSUFFICIENT_DATA" ? (
-                  <span className="badge badge-neutral">Opportunity: n/a</span>
-                ) : (
-                  <span className="badge badge-accent">
-                    {opp.classification?.replaceAll("_", " ").toLowerCase()} · {opp.score}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <Sparkline observed={outlook.demand.observed} forecast={outlook.demand.forecast} />
+                  {opp.verdict === "INSUFFICIENT_DATA" ? (
+                    <span className="badge badge-neutral">Opportunity: n/a</span>
+                  ) : (
+                    <span className="badge badge-accent">
+                      {opp.classification?.replaceAll("_", " ").toLowerCase()} · {opp.score}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col gap-2 text-sm sm:grid sm:grid-cols-3 sm:gap-3">

@@ -11,7 +11,7 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
-import type { Layer, LatLngBoundsExpression, Path, PathOptions } from "leaflet";
+import type { Layer, LatLngBoundsExpression, Map as LeafletMap, Path, PathOptions } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CircleMarker,
@@ -113,6 +113,27 @@ function useFeatureInteractions(
   );
 }
 
+// Leaflet sizes its canvas from the container's dimensions at mount time.
+// On mobile, the container often isn't at its final size yet (sidebar
+// collapsing, orientation change, browser chrome resizing), leaving the map
+// stretched or cropped until something nudges it. Watch the container and
+// re-measure whenever it changes.
+function useMapResize(mapRef: React.RefObject<LeafletMap | null>) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mapRef]);
+
+  return containerRef;
+}
+
 function useBoundary<G extends Geometry = Geometry>(url: string) {
   const [data, setData] = useState<FeatureCollection<G> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +167,9 @@ export default function CalabarzonMap({
   const province = useBoundary(BOUNDARY_FILES.province);
   const municipality = useBoundary(BOUNDARY_FILES.municipality);
   const error = region.error || province.error || municipality.error;
+
+  const mapRef = useRef<LeafletMap | null>(null);
+  const resizeContainerRef = useMapResize(mapRef);
 
   const provinceStyle = useCallback(
     (feature?: MapFeature): PathOptions => {
@@ -186,8 +210,12 @@ export default function CalabarzonMap({
   return (
     <div className="flex flex-col gap-2">
       {error && <p className="state state-error">{error}</p>}
-      <div className="relative h-[60vh] min-h-[360px] w-full overflow-hidden rounded-lg border border-line sm:h-[70vh]">
+      <div
+        ref={resizeContainerRef}
+        className="relative h-[60vh] min-h-[360px] w-full overflow-hidden rounded-lg border border-line sm:h-[70vh]"
+      >
         <MapContainer
+          ref={mapRef}
           bounds={CALABARZON_BOUNDS}
           maxBounds={MAX_BOUNDS}
           maxBoundsViscosity={1.0}
