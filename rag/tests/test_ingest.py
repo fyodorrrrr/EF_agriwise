@@ -53,6 +53,22 @@ def test_extract_pages_reads_text(make_pdf):
     assert "GAP" in pages[0].text
 
 
+def test_extract_pages_splits_markdown_on_level_2_headings(tmp_path):
+    md = tmp_path / "about-agriwise-analytics.md"
+    md.write_text(
+        "# Title\n\nintro paragraph\n\n"
+        "## Section one\n\nbody one\n\n"
+        "## Section two\n\nbody two\n",
+        encoding="utf-8",
+    )
+    pages = extract_pages(md)
+    assert [p.page_number for p in pages] == [1, 2, 3]
+    assert pages[0].doc_id == "about-agriwise-analytics"
+    assert pages[0].doc_title == "About the AgriWise Analytics"
+    assert "intro paragraph" in pages[0].text
+    assert pages[1].text.startswith("## Section one")
+
+
 @pytest.mark.slow
 def test_ingest_end_to_end_builds_index(make_pdf, tmp_path):
     pdf = make_pdf(

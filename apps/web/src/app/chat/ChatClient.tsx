@@ -13,6 +13,7 @@ type Turn = {
   content: string;
   citations?: Citation[];
   contextUsed?: boolean;
+  analyticsScope?: string | null;
 };
 
 const EXAMPLES = [
@@ -67,6 +68,7 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
           content: res.answer,
           citations: res.citations,
           contextUsed: res.analytics_context_used,
+          analyticsScope: res.analytics_scope,
         },
       ]);
     } catch {
@@ -143,7 +145,7 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
       <div
         className={
           isPanel
-            ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto [overflow-x:clip]"
+            ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-clip"
             : "flex flex-col gap-4"
         }
       >
@@ -207,7 +209,9 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
                 )}
                 {m.contextUsed && (
                   <p className="mt-1 text-xs text-muted">
-                    Used your current {preferences.commodity} / {preferences.province} analytics.
+                    {m.analyticsScope
+                      ? `Answer used AgriWise analytics — ${m.analyticsScope}.`
+                      : "Answer used AgriWise analytics."}
                   </p>
                 )}
               </>

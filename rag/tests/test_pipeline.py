@@ -68,6 +68,17 @@ def test_out_of_scope_question_is_refused_without_generation():
     assert gen.seen_messages is None  # no generation call was spent
 
 
+def test_analytics_context_bypasses_out_of_scope_when_nothing_retrieved():
+    gen = _FakeGenerator()
+    retriever = _FakeRetriever([])  # manuals have nothing for this question
+    result = RagPipeline(retriever, gen).answer(
+        "which province is best for tomato",
+        analytics_context="Cross-province comparison for Tomato ...",
+    )
+    assert result.answer == "the answer"  # generator was used, not the canned line
+    assert gen.seen_messages is not None
+
+
 def test_greeting_reaches_generator_and_skips_retrieval():
     gen = _FakeGenerator()
     retriever = _FakeRetriever([_chunk("a::0", "fbs", 1, 1)])

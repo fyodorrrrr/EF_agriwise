@@ -23,4 +23,5 @@ export interface RagQueryResponse {
   answer: string;
   citations: Citation[];
   analytics_context_used: boolean;
+  analytics_scope?: string | null;
 }

@@ -61,13 +61,106 @@ def test_query_injects_resolved_analytics_context_from_selectors():
     if not body["analytics_context_used"]:
         pytest.skip("forecast artifacts not present in this checkout")
     ctx = pipeline.last_analytics_context
-    assert "Rice in Laguna province" in ctx
-    assert "Estimated Demand Proxy" in ctx
-    # A bogus selector is ignored, not trusted.
+    assert "Rice in Laguna province" in ctx  # focused block
+    assert "Full CALABARZON analytics grid" in ctx  # plus the whole grid
+    # Fully bogus selectors and no analytics intent → no analytics context.
     resp2 = client.post(
-        "/rag/query", json={"question": "q", "commodity": "Gold", "province": "Laguna"}
+        "/rag/query", json={"question": "q", "commodity": "Gold", "province": "Atlantis"}
     )
     assert resp2.json()["analytics_context_used"] is False
+
+
+def test_query_resolves_analytics_from_question_text_without_selectors():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post(
+        "/rag/query", json={"question": "what is the price outlook for rice in Laguna?"}
+    )
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast artifacts not present in this checkout")
+    assert body["analytics_scope"] == "Rice · Laguna"
+    assert "Rice in Laguna province" in pipeline.last_analytics_context
+
+
+def test_question_entities_win_over_stale_dropdown_selectors():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post(
+        "/rag/query",
+        json={
+            "question": "Is demand for tomato going up in Cavite?",
+            "commodity": "Rice",
+            "province": "Laguna",
+        },
+    )
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast artifacts not present in this checkout")
+    assert body["analytics_scope"] == "Tomato · Cavite"
+    assert "Tomato in Cavite province" in pipeline.last_analytics_context
+
+
+def test_query_labels_scope_when_only_a_commodity_is_named():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post("/rag/query", json={"question": "where should I plant tomato?"})
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast artifacts not present in this checkout")
+    assert body["analytics_scope"] == "Tomato · all provinces"
+    assert "Full CALABARZON analytics grid" in pipeline.last_analytics_context
+
+
+def test_query_labels_scope_when_only_a_province_is_named():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post(
+        "/rag/query", json={"question": "which crop has the highest demand in Laguna?"}
+    )
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast artifacts not present in this checkout")
+    assert body["analytics_scope"] == "Laguna · all commodities"
+    assert "Full CALABARZON analytics grid" in pipeline.last_analytics_context
+
+
+def test_query_injects_full_grid_for_a_broad_planning_question():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post("/rag/query", json={"question": "what is a good crop to plant?"})
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast artifacts not present in this checkout")
+    assert body["analytics_scope"] == "CALABARZON overview"
+    assert "- Rice / Batangas:" in pipeline.last_analytics_context
+
+
+def test_query_no_analytics_for_a_pure_manual_question():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post("/rag/query", json={"question": "how do I keep a farm record book?"})
+    body = resp.json()
+    assert body["analytics_context_used"] is False
+    assert body["analytics_scope"] is None
 
 
 def test_query_validation_error_is_422():
