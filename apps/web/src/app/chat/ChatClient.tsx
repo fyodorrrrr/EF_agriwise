@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
@@ -26,12 +26,30 @@ function pageLabel(c: Citation): string {
     : `${c.doc_title} — p.${c.page_start}-${c.page_end}`;
 }
 
+const BotAvatar = () => (
+  <span className="chat-avatar" aria-hidden="true">
+    {/* eslint-disable-next-line @next/next/no-img-element -- tiny static brand mark */}
+    <img src="/brand/agriwise-mark-white.png" alt="" />
+  </span>
+);
+
 export default function ChatClient({ variant = "page" }: { variant?: "page" | "panel" }) {
+  const isPanel = variant === "panel";
   const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
   const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isPanel) return;
+    try {
+      bottomRef.current?.scrollIntoView?.({ block: "end" });
+    } catch {
+      /* scrollIntoView is unavailable in some test/SSR environments */
+    }
+  }, [messages, pending, isPanel]);
 
   async function send(question: string, history: Turn[]) {
     setPending(true);
@@ -75,46 +93,74 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
     void send(lastUser.content, history);
   }
 
+  const scopeControls = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <CommoditySelect value={preferences.commodity} onChange={setCommodity} />
+      <ProvinceSelect value={preferences.province} onChange={setProvince} />
+      {(preferences.commodity || preferences.province) && (
+        <button
+          type="button"
+          className="action"
+          onClick={() => {
+            setCommodity(null);
+            setProvince(null);
+          }}
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+
+  const examplePrompts = isPanel ? (
+    <div className="chat-suggests">
+      {EXAMPLES.map((ex) => (
+        <button key={ex} type="button" className="chat-suggest" onClick={() => setInput(ex)}>
+          {ex}
+        </button>
+      ))}
+    </div>
+  ) : (
+    <div className="chip-group">
+      {EXAMPLES.map((ex) => (
+        <button key={ex} type="button" className="chip text-left" onClick={() => setInput(ex)}>
+          {ex}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div
       className={
-        variant === "panel"
+        isPanel
           ? "flex h-full flex-col gap-3 p-3"
           : "mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8"
       }
     >
-      {variant === "page" && <h1 className="text-2xl font-semibold">Ask AgriWise</h1>}
+      {!isPanel && <h1 className="text-2xl font-semibold">Ask AgriWise</h1>}
 
       <div
         className={
-          variant === "panel"
-            ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+          isPanel
+            ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto [overflow-x:clip]"
             : "flex flex-col gap-4"
         }
       >
-        {isHydrated && (
-          <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted">
-              Optional — narrow answers to one commodity and province. Chat works fine without it.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <CommoditySelect value={preferences.commodity} onChange={setCommodity} />
-              <ProvinceSelect value={preferences.province} onChange={setProvince} />
-              {(preferences.commodity || preferences.province) && (
-                <button
-                  type="button"
-                  className="action"
-                  onClick={() => {
-                    setCommodity(null);
-                    setProvince(null);
-                  }}
-                >
-                  Clear
-                </button>
-              )}
+        {isHydrated &&
+          (isPanel ? (
+            <details className="disclosure">
+              <summary>Scope answers to a commodity / province</summary>
+              <div className="disclosure-body">{scopeControls}</div>
+            </details>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted">
+                Optional — narrow answers to one commodity and province. Chat works fine without it.
+              </p>
+              {scopeControls}
             </div>
-          </div>
-        )}
+          ))}
 
         {isHydrated && preferences.commodity && preferences.province && (
           <p className="text-xs text-muted">
@@ -126,58 +172,95 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
           </p>
         )}
 
-        {messages.length === 0 && (
-          <div className="card flex flex-col gap-2">
-            <p className="text-sm text-muted">
-              Ask about the DA farm-business and good-agricultural-practice manuals.
-            </p>
-            <div className="chip-group">
-              {EXAMPLES.map((ex) => (
-                <button
-                  key={ex}
-                  type="button"
-                  className="chip text-left"
-                  onClick={() => setInput(ex)}
-                >
-                  {ex}
-                </button>
-              ))}
+        {messages.length === 0 &&
+          (isPanel ? (
+            <div className="flex items-start gap-2 self-start">
+              <BotAvatar />
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="rounded-lg bg-sunken px-3 py-2 text-sm text-body">
+                  Hi! Ask me about the DA farm-business and good-agricultural-practice manuals —
+                  I&apos;ll point you to the page.
+                </div>
+                {examplePrompts}
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="card flex flex-col gap-2">
+              <p className="text-sm text-muted">
+                Ask about the DA farm-business and good-agricultural-practice manuals.
+              </p>
+              {examplePrompts}
+            </div>
+          ))}
 
-        <ul className="flex flex-col gap-3">
-          {messages.map((m, i) => (
-            <li
-              key={i}
-              className={`flex max-w-[92%] flex-col sm:max-w-[80%] ${
-                m.role === "user" ? "items-end self-end text-right" : "items-start self-start"
-              }`}
-            >
+        <ul className="flex min-w-0 flex-col gap-3">
+          {messages.map((m, i) => {
+            const isUser = m.role === "user";
+            const meta = (
+              <>
+                {m.citations && m.citations.length > 0 && (
+                  <ul className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">
+                    {m.citations.map((c, j) => (
+                      <li key={j}>{pageLabel(c)}</li>
+                    ))}
+                  </ul>
+                )}
+                {m.contextUsed && (
+                  <p className="mt-1 text-xs text-muted">
+                    Used your current {preferences.commodity} / {preferences.province} analytics.
+                  </p>
+                )}
+              </>
+            );
+            const bubble = (
               <div
                 className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm [overflow-wrap:anywhere] ${
-                  m.role === "user" ? "bg-accent-500 text-on-accent" : "bg-sunken text-body"
+                  isUser ? "bg-accent-500 text-on-accent" : "bg-sunken text-body"
                 }`}
               >
                 {m.content}
               </div>
-              {m.citations && m.citations.length > 0 && (
-                <ul className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">
-                  {m.citations.map((c, j) => (
-                    <li key={j}>{pageLabel(c)}</li>
-                  ))}
-                </ul>
-              )}
-              {m.contextUsed && (
-                <p className="mt-1 text-xs text-muted">
-                  Used your current {preferences.commodity} / {preferences.province} analytics.
-                </p>
-              )}
-            </li>
-          ))}
+            );
+
+            if (isPanel && !isUser) {
+              return (
+                <li key={i} className="flex max-w-[92%] items-start gap-2 self-start">
+                  <BotAvatar />
+                  <div className="flex min-w-0 flex-col items-start">
+                    {bubble}
+                    {meta}
+                  </div>
+                </li>
+              );
+            }
+
+            return (
+              <li
+                key={i}
+                className={`flex max-w-[92%] flex-col sm:max-w-[80%] ${
+                  isUser ? "items-end self-end text-right" : "items-start self-start"
+                }`}
+              >
+                {bubble}
+                {meta}
+              </li>
+            );
+          })}
         </ul>
 
-        {pending && <p className="state state-loading">Thinking…</p>}
+        {pending &&
+          (isPanel ? (
+            <div className="flex items-start gap-2 self-start" aria-label="Thinking" role="status">
+              <BotAvatar />
+              <div className="typing-dots rounded-lg bg-sunken px-3 py-3">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          ) : (
+            <p className="state state-loading">Thinking…</p>
+          ))}
         {error && (
           <p className="state state-error">
             {error}{" "}
@@ -186,6 +269,7 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
             </button>
           </p>
         )}
+        <div ref={bottomRef} />
       </div>
 
       <form
@@ -203,8 +287,19 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
           placeholder="Ask a question…"
           className="input-bare"
         />
-        <button type="submit" disabled={pending} className="btn btn-accent btn-sm">
-          Send
+        <button
+          type="submit"
+          disabled={pending || (isPanel && !input.trim())}
+          aria-label="Send"
+          className={isPanel ? "btn btn-accent btn-icon" : "btn btn-accent btn-sm"}
+        >
+          {isPanel ? (
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          ) : (
+            "Send"
+          )}
         </button>
       </form>
     </div>
