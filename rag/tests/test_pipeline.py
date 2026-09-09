@@ -3,9 +3,24 @@ from __future__ import annotations
 import pytest
 
 from rag.generator import RagGenerationError
-from rag.pipeline import OUT_OF_SCOPE_ANSWER, Citation, RagAnswer, RagPipeline
+from rag.pipeline import (
+    OUT_OF_SCOPE_ANSWER,
+    Citation,
+    RagAnswer,
+    RagPipeline,
+    _plain_text,
+)
 from rag.prompt import ChatTurn
 from rag.retriever import RetrievedChunk
+
+
+def test_plain_text_strips_markdown():
+    raw = "## Answer\n\n**Sell at Pila** if price is `high`.\n\n> a quote\n\n* one\n+ two"
+    out = _plain_text(raw)
+    assert "**" not in out and "#" not in out and "`" not in out
+    assert out.startswith("Answer")
+    assert "Sell at Pila if price is high." in out
+    assert "\n- one\n- two" in out
 
 
 class _FakeRetriever:
@@ -34,21 +49,41 @@ def _chunk(cid, doc, ps, pe):
     )
 
 
+class _CitingGenerator:
+    """Emits an answer whose bracket tags name both retrieved sources."""
+
+    def generate(self, messages):
+        return "Keep a cash book [FBS, p.10-11]. Hygiene rules are in [GAP, p.3]."
+
+
 def test_answer_returns_dedup_citations_and_chunk_ids():
     chunks = [
         _chunk("a::0", "fbs", 10, 11),
         _chunk("a::1", "fbs", 10, 11),
         _chunk("b::0", "gap", 3, 3),
     ]
-    pipeline = RagPipeline(_FakeRetriever(chunks), _FakeGenerator())
+    pipeline = RagPipeline(_FakeRetriever(chunks), _CitingGenerator())
     result = pipeline.answer("how to budget", [ChatTurn(role="user", content="hi")])
     assert isinstance(result, RagAnswer)
-    assert result.answer == "the answer"
     assert result.used_chunk_ids == ["a::0", "a::1", "b::0"]
     assert result.citations == [
         Citation(doc_id="fbs", doc_title="FBS", page_start=10, page_end=11),
         Citation(doc_id="gap", doc_title="GAP", page_start=3, page_end=3),
     ]
+
+
+def test_citations_are_limited_to_sources_the_answer_named():
+    chunks = [_chunk("a::0", "fbs", 10, 11), _chunk("b::0", "gap", 3, 3)]
+
+    class _Gen:
+        def generate(self, messages):
+            return "Rice price is forecast at 15 PHP/kg by Q4 — no manual needed."
+
+    result = RagPipeline(_FakeRetriever(chunks), _Gen()).answer(
+        "price of rice", analytics_context="FORECAST DATA ..."
+    )
+    assert result.citations == []  # neither FBS nor GAP was mentioned
+    assert result.used_chunk_ids == ["a::0", "b::0"]  # retrieval still recorded
 
 
 def test_answer_without_generator_raises():

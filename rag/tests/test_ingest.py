@@ -69,6 +69,32 @@ def test_extract_pages_splits_markdown_on_level_2_headings(tmp_path):
     assert pages[1].text.startswith("## Section one")
 
 
+def test_extract_pages_parses_the_consolidated_agri_corpus(tmp_path):
+    md = tmp_path / "AgriWise_Agriculture_RAG_Corpus.md"
+    md.write_text(
+        "# Corpus\n\nintro\n\n"
+        "# AGRI-006 - Rice Plant Disorders\n\n"
+        "## Source Metadata\n\n- **Source ID:** AGRI-006\n\n"
+        "## Document Text\n\n"
+        "### PDF Page 7\n\n"
+        "> RAG locator: source_id=AGRI-006 | pdf_page=7\n\n"
+        "<!-- comment -->\n\n"
+        "Yellow leaf tips signal potassium deficiency in rice.\n\n"
+        "### PDF Page 8\n\nApply potash and re-check after ten days.\n\n"
+        "# AGRI-001 - ATI Corporate Plan\n\n"
+        "## Document Text\n\n### PDF Page 1\n\nSkipped bureaucracy content.\n",
+        encoding="utf-8",
+    )
+    pages = extract_pages(md)
+    # AGRI-001 is not in the keep-list; only AGRI-006 survives.
+    assert {p.doc_id for p in pages} == {"AGRI-006"}
+    assert pages[0].doc_title == "Rice Plant Disorders"
+    assert [p.page_number for p in pages] == [7, 8]
+    assert "potassium deficiency" in pages[0].text
+    assert "RAG locator" not in pages[0].text
+    assert "<!--" not in pages[0].text
+
+
 @pytest.mark.slow
 def test_ingest_end_to_end_builds_index(make_pdf, tmp_path):
     pdf = make_pdf(
