@@ -4,7 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.entities import extract_entities, wants_markets, wants_overview
+from app.contacts import find_contact, municipality_in
+from app.entities import extract_entities, wants_contact, wants_markets, wants_overview
 from app.rag_context import (
     build_analytics_context,
     build_full_grid_context,
@@ -14,8 +15,18 @@ from app.schemas.rag import Citation, RagQueryRequest, RagQueryResponse
 from ml.forecasting.domain import COMMODITIES, PROVINCES
 from ml.forecasting.forecast_service import ForecastService
 from rag.generator import RagGenerationError
-from rag.pipeline import RagPipeline
+from rag.pipeline import OUT_OF_SCOPE_ANSWER, RagPipeline, _is_smalltalk
 from rag.prompt import ChatTurn
+
+# Phrases the model uses (per the system prompt) when it is handing the farmer
+# off to a person rather than answering from the manuals or the analytics.
+_HANDOFF_MARKERS = (
+    "municipal agricultur",
+    "provincial agricultur",
+    "department of agriculture",
+    "municipal agriculture office",
+    "local da office",
+)
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
@@ -104,9 +115,25 @@ def query(
         result = pipeline.answer(payload.question, history, analytics_context=analytics_context)
     except RagGenerationError as exc:
         raise HTTPException(status_code=503, detail=f"generation failed: {exc}") from exc
+
+    # Hand the farmer a real office to reach when the bot couldn't fully help
+    # (answered from neither the manuals nor the analytics and is deferring), or
+    # when they explicitly asked for a contact.
+    contact = None
+    asked_for_contact = wants_contact(payload.question)
+    deferred = (
+        result.answer != OUT_OF_SCOPE_ANSWER
+        and not result.citations
+        and not _is_smalltalk(payload.question)
+        and any(marker in result.answer.lower() for marker in _HANDOFF_MARKERS)
+    )
+    if asked_for_contact or deferred:
+        contact = find_contact(province, municipality_in(payload.question))
+
     return RagQueryResponse(
         answer=result.answer,
         citations=[Citation(**citation.model_dump()) for citation in result.citations],
         analytics_context_used=analytics_context is not None,
         analytics_scope=analytics_scope,
+        contact=contact,
     )

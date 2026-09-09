@@ -6,7 +6,7 @@ import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { usePreferences } from "@/lib/preferences";
 import { askAgriWise } from "@/lib/rag";
-import type { Citation } from "@/types/rag";
+import type { Citation, ContactInfo } from "@/types/rag";
 
 type Turn = {
   role: "user" | "assistant";
@@ -14,7 +14,38 @@ type Turn = {
   citations?: Citation[];
   contextUsed?: boolean;
   analyticsScope?: string | null;
+  contact?: ContactInfo | null;
 };
+
+function ContactCard({ c }: { c: ContactInfo }) {
+  const tel = c.phone.split(/[;,/]/)[0].replace(/[^\d+]/g, "");
+  return (
+    <div className="card mt-2 gap-1 !p-3 text-sm">
+      <p className="text-xs font-semibold text-muted">Need a person to talk to?</p>
+      <p className="font-medium">
+        {c.name ? `${c.name} — ` : ""}
+        {c.position}
+      </p>
+      <p className="text-xs text-muted">
+        {c.office}, {c.organization} · {c.scope}
+      </p>
+      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+        {c.phone && (
+          <a href={`tel:${tel}`} className="font-medium">
+            ☎ {c.phone}
+          </a>
+        )}
+        {c.email && (
+          <a href={`mailto:${c.email}`} className="font-medium">
+            ✉ {c.email}
+          </a>
+        )}
+      </p>
+      {c.how_to_reach && <p className="text-xs text-muted">{c.how_to_reach}</p>}
+      {c.verified && <p className="text-xs text-neutral-500">{c.verified}</p>}
+    </div>
+  );
+}
 
 const EXAMPLES = [
   "How do I record farm expenses in a Farm Business School?",
@@ -69,6 +100,7 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
           citations: res.citations,
           contextUsed: res.analytics_context_used,
           analyticsScope: res.analytics_scope,
+          contact: res.contact,
         },
       ]);
     } catch {
@@ -215,6 +247,7 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
                       : "Answer used AgriWise analytics."}
                   </p>
                 )}
+                {m.contact && <ContactCard c={m.contact} />}
               </>
             );
             const bubble = (
