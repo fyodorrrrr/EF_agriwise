@@ -129,7 +129,10 @@ def test_price_uses_the_learned_model_when_the_joblib_is_present():
     assert price.unit == "PHP/kg"
     assert price.source.startswith("learned_model:")
     assert price.confidence == "HIGH"
-    assert len(price.forecast) == 3
+    # Price is monthly; the committed feature table has 5 future months
+    # prepared for Rice/Laguna, which is below the 12-month (4-quarter)
+    # horizon cap — the cap only ever binds once more months are prepared.
+    assert len(price.forecast) == 5
 
 
 def test_red_onion_supply_and_price_stay_value_free():

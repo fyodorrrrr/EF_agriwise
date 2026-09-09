@@ -27,6 +27,11 @@ RESOLUTION_NOTE = (
 _OBSERVED_TAIL = {"demand": 8, "supply": 8, "price": 12}
 _FORECAST_HORIZON = 4
 
+# Raw rows needed from `_series_component` to cover _FORECAST_HORIZON quarters.
+# Supply is already quarterly; price is monthly, so it needs 3x as many rows
+# to reach the same number of quarters once the frontend buckets it.
+_PERIODS_PER_HORIZON = {"supply": _FORECAST_HORIZON, "price": _FORECAST_HORIZON * 3}
+
 _UNIT = {
     "demand": "index (base~100)",
     "supply": "MT",
@@ -243,15 +248,16 @@ class ForecastService:
         last_observed = observed_rows.iloc[-1]["date"]
         future_rows = rows[rows["target"].isna() & (rows["date"] > last_observed)]
 
+        periods = _PERIODS_PER_HORIZON[component]
         forecast_points, source = self._forecast_rows(
-            commodity, component, future_rows.head(_FORECAST_HORIZON * 2)
+            commodity, component, future_rows.head(periods * 2)
         )
 
         confidence = _CONFIDENCE_FROM_VERDICT.get(verdict, "NONE")
         return OutlookComponentPayload(
             verdict=verdict,
             observed=_points(observed_rows.tail(_OBSERVED_TAIL[component]), "target") or None,
-            forecast=forecast_points[:_FORECAST_HORIZON] or None,
+            forecast=forecast_points[:periods] or None,
             unit=_UNIT[component],
             frequency=_FREQUENCY[component],
             confidence=confidence,

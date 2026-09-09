@@ -1,10 +1,17 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import CalabarzonMap from "@/components/map/CalabarzonMap";
 
 vi.mock("@turf/mask", () => ({ default: () => null }));
+
+// jsdom doesn't implement ResizeObserver.
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 vi.mock("@/lib/gis/geojson", async () => {
   const actual = await vi.importActual<typeof import("@/lib/gis/geojson")>(
@@ -38,12 +45,15 @@ vi.mock("@/lib/gis/geojson", async () => {
 vi.mock("react-leaflet", () => {
   const Container = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
   const LayersControl = Object.assign(Container, { Overlay: Container });
+  const MapContainer = forwardRef<unknown, { children?: ReactNode }>(({ children }, _ref) => (
+    <div>{children}</div>
+  ));
   return {
     CircleMarker: Container,
     GeoJSON: Container,
     LayerGroup: Container,
     LayersControl,
-    MapContainer: Container,
+    MapContainer,
     Popup: Container,
     TileLayer: Container,
     Tooltip: Container,
