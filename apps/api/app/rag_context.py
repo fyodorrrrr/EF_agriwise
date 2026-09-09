@@ -15,6 +15,16 @@ _KINDS = (
     ("Price (PHP/kg, monthly)", "price"),
 )
 
+# Farmer-facing wording for the raw backend verdict — mirrors
+# apps/web/src/components/forecast/verdict.ts. INSUFFICIENT_DATA is handled
+# separately above, so it has no entry here.
+_VERDICT_LABEL = {
+    "PASS": "Good Forecast",
+    "CAUTION": "Planning Estimate",
+    "USABLE_PROXY": "Estimated Demand",
+    "INDICATIVE_PROXY": "Demand Trend",
+}
+
 
 def build_analytics_context(
     service: ForecastService, commodity: str | None, province: str | None
@@ -35,7 +45,7 @@ def build_analytics_context(
         if component.verdict == "INSUFFICIENT_DATA":
             lines.append(f"- {label}: not available (insufficient data).")
             continue
-        parts = [f"verdict {component.verdict}"]
+        parts = [f"quality: {_VERDICT_LABEL[component.verdict]}"]
         if component.observed:
             last = component.observed[-1]
             parts.append(f"latest observed {last['value']:.1f} ({last['period']})")

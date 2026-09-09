@@ -42,4 +42,4 @@ def test_red_onion_context_marks_supply_price_and_opportunity_unavailable():
     assert "Price (PHP/kg, monthly): not available" in ctx
     assert "Opportunity: not available" in ctx
     # ...but the demand proxy index is still reported
-    assert "Demand (Estimated Demand Proxy, index): verdict" in ctx
+    assert "Demand (Estimated Demand Proxy, index): quality:" in ctx
