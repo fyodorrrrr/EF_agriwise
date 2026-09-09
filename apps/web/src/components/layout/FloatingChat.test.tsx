@@ -40,7 +40,7 @@ describe("FloatingChat", () => {
   it("shows the assistant identity in the panel header", () => {
     renderFab();
     expect(screen.getByText("AgriWise")).toBeInTheDocument();
-    expect(screen.getByText("DA farm-business & GAP manuals")).toBeInTheDocument();
+    expect(screen.getByText("Your farm advisor")).toBeInTheDocument();
   });
 
   it("shows a typing indicator while a question is pending", async () => {

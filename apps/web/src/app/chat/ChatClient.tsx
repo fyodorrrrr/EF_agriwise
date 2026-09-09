@@ -180,8 +180,9 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
               <BotAvatar />
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="rounded-lg bg-sunken px-3 py-2 text-sm text-body">
-                  Hi! Ask me about the DA farm-business and good-agricultural-practice manuals —
-                  I&apos;ll point you to the page.
+                  Kumusta! I&apos;m AgriWise, your farm advisor. Tell me your crop and
+                  what&apos;s happening on your farm — or ask about prices, markets, or
+                  the DA manuals.
                 </div>
                 {examplePrompts}
               </div>

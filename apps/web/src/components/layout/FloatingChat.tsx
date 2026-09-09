@@ -65,7 +65,7 @@ export function FloatingChat() {
             </span>
             <span className="fab-panel-titles">
               <span className="fab-panel-title">AgriWise</span>
-              <span className="fab-panel-subtitle">DA farm-business &amp; GAP manuals</span>
+              <span className="fab-panel-subtitle">Your farm advisor</span>
             </span>
           </div>
           <button type="button" className="btn btn-ghost btn-icon" aria-label="Close chat" onClick={close}>
