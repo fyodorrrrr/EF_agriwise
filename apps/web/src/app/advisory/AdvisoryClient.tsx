@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-import { BrandLoader } from "@/components/BrandLoader";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { classificationLabel } from "@/components/forecast/glossary";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
@@ -75,6 +74,36 @@ function AdvisoryCard({ advisory, compact = false }: { advisory: AdvisoryRecord;
   );
 }
 
+function AdvisorySkeleton() {
+  return (
+    <div className="flex flex-col gap-4" role="status" aria-live="polite">
+      <span className="sr-only">Preparing market brief…</span>
+      <div
+        className="card gap-3 bg-[var(--color-accent-50)]"
+        data-advisory-skeleton-card
+        aria-hidden="true"
+      >
+        <div className="skeleton h-3 w-40" />
+        <div className="skeleton h-6 w-full max-w-3xl" />
+        <div className="skeleton h-3 w-2/3 max-w-xl" />
+      </div>
+      <section className="flex flex-col gap-3" aria-hidden="true">
+        <div className="skeleton h-5 w-44" />
+        <div className="grid gap-3 md:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="card gap-3" data-advisory-skeleton-card>
+              <div className="skeleton h-3 w-28" />
+              <div className="skeleton h-5 w-full" />
+              <div className="skeleton h-3 w-4/5" />
+              <div className="skeleton h-3 w-3/5" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function AdvisoryClient() {
   const { preferences, isHydrated, setProvince } = usePreferences();
   const province = preferences.province;
@@ -92,13 +121,13 @@ export function AdvisoryClient() {
   const data = result?.province === province ? result.data : null;
   const top = data?.advisories.slice(0, 3) ?? [];
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <div className="page-container-full flex flex-col gap-4">
       <div className="page-head">
         <div><h1>Market Advisory</h1><p>Market intelligence based on AgriWise demand, supply, price, opportunity, and market-location data.</p></div>
         <ProvinceSelect value={province} onChange={setProvince} />
       </div>
       {!province && <p className="state">Select a province to view market advisories.</p>}
-      {province && !data && failed !== province && <BrandLoader label="Preparing market brief…" />}
+      {province && !data && failed !== province && <AdvisorySkeleton />}
       {failed === province && <p className="state state-error">Couldn&apos;t load the market advisory.</p>}
       {data && <>
         <section className="card bg-[var(--color-accent-50)] flex flex-col gap-2">
