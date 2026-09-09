@@ -1,3 +1,4 @@
+import { FloatingChat } from "./FloatingChat";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <FloatingChat />
     </div>
   );
 }
