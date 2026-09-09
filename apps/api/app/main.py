@@ -89,6 +89,12 @@ def _build_market_registry(settings: Settings):
         return MarketRegistry(markets=(), config={})
 
 
+def _build_municipal_disaggregation_service(forecast_service: ForecastService):
+    from ml.forecasting.municipal_disaggregation import MunicipalDisaggregationService
+
+    return MunicipalDisaggregationService(forecast_service)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown hook.
@@ -99,6 +105,9 @@ async def lifespan(app: FastAPI):
     """
     app.state.rag_pipeline = _build_rag_pipeline(get_settings())
     app.state.forecast_service = _build_forecast_service(get_settings())
+    app.state.municipal_disaggregation_service = _build_municipal_disaggregation_service(
+        app.state.forecast_service
+    )
     app.state.market_registry = _build_market_registry(get_settings())
     yield
 
@@ -132,6 +141,9 @@ def create_app() -> FastAPI:
     # normally or under `with TestClient(...)`.
     app.state.rag_pipeline = None
     app.state.forecast_service = _build_forecast_service(settings)
+    app.state.municipal_disaggregation_service = _build_municipal_disaggregation_service(
+        app.state.forecast_service
+    )
     app.state.market_registry = _build_market_registry(settings)
 
     return app

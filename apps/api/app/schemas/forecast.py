@@ -74,6 +74,27 @@ class OutlookResponse(BaseModel):
     opportunity: OpportunityComponent
 
 
+class MunicipalOutlookRecord(BaseModel):
+    psgc_code: str
+    municipality: str
+    demand_weight: float
+    demand_value: float
+    demand_unit: str
+    supply_weight: float
+    supply_mt: float | None = None
+    opportunity_score: float
+    opportunity_classification: str
+
+
+class MunicipalOutlookResponse(BaseModel):
+    province: Province
+    commodity: Commodity
+    methodology: str
+    demand_unit: str
+    supply_unit: str
+    municipalities: list[MunicipalOutlookRecord]
+
+
 class EvidenceComponent(BaseModel):
     commodity: Commodity
     component: Literal["demand", "supply", "price"]

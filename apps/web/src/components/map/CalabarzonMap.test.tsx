@@ -50,9 +50,12 @@ vi.mock("react-leaflet", () => {
     <div data-layer-name={name}>{children}</div>
   );
   const LayersControl = Object.assign(Container, { Overlay });
-  const MapContainer = forwardRef<unknown, { children?: ReactNode }>(({ children }, _ref) => (
-    <div>{children}</div>
-  ));
+  const MapContainer = forwardRef<unknown, { children?: ReactNode }>(function MapContainer(
+    { children },
+    ref,
+  ) {
+    return <div ref={ref as React.Ref<HTMLDivElement>}>{children}</div>;
+  });
   return {
     GeoJSON: Container,
     LayerGroup: Container,

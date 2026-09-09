@@ -11,8 +11,8 @@ export default function MappingPage() {
         <div>
           <h1>Mapping</h1>
           <p>
-            CALABARZON administrative boundaries with province-resolution analytics.
-            Toggle boundary layers on the map; pick an analytics layer below.
+            CALABARZON administrative boundaries with provincial analytics and a Laguna
+            municipal benchmark view. Toggle boundary layers on the map; pick an analytics layer below.
           </p>
         </div>
       </div>

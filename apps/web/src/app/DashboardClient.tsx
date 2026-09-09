@@ -118,7 +118,7 @@ export function DashboardClient() {
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
       <div className="page-head">
         <div>
-          <h1>CALABARZON Outlook</h1>
+          <h1>{province ? `${province} Outlook` : "CALABARZON Outlook"}</h1>
           <p>
             Province-resolution demand, supply, price, and opportunity for all four
             commodities. This is not a municipality-level forecast.
@@ -168,7 +168,7 @@ export function DashboardClient() {
         rows.map(({ commodity, outlook }) => {
           const opp = outlook.opportunity;
           return (
-            <div key={commodity} className="card flex flex-col gap-3">
+            <div key={commodity} className="card dashboard-card flex flex-col gap-3">
               <div className="card-head">
                 <div className="card-title">{commodity}</div>
                 <div className="flex items-center gap-3">

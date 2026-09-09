@@ -45,9 +45,18 @@ import {
 } from "@/lib/gis/styles";
 import type { MarketRecord } from "@/types/markets";
 
+export interface MunicipalMetric {
+  value: number | null;
+  unit: string | null;
+  label: string;
+  classification?: string;
+}
+
 export interface CalabarzonMapProps {
   markets: MarketRecord[];
+  geographicView?: "province" | "municipality";
   provinceMetrics: Record<string, number | null>;
+  municipalityMetrics?: Record<string, MunicipalMetric>;
   heatmapLabel: string;
   heatmapUnit: string | null;
   heatmapMin: number;
@@ -149,6 +158,7 @@ function useFeatureInteractions(
   level: BoundaryLevel,
   styleForFeature?: (feature: MapFeature) => PathOptions,
   tooltipForFeature?: (feature: MapFeature) => string,
+  popupForFeature?: (feature: MapFeature) => string,
 ) {
   const selectedRef = useRef<{ path: Path; style: PathOptions } | null>(null);
 
@@ -158,7 +168,7 @@ function useFeatureInteractions(
       const psgc = normalizePsgcCode(feature.properties?.psgc_code) ?? "Unavailable";
       const baseStyle = styleForFeature?.(feature) ?? boundaryStyle(level);
       layer.bindTooltip(tooltipForFeature?.(feature) ?? name, { sticky: true });
-      layer.bindPopup(`<strong>${name}</strong><br/>PSGC: ${psgc}`);
+      layer.bindPopup(popupForFeature?.(feature) ?? `<strong>${name}</strong><br/>PSGC: ${psgc}`);
 
       layer.on("click", () => {
         const path = layer as Path;
@@ -175,7 +185,7 @@ function useFeatureInteractions(
         selectedRef.current = { path, style: baseStyle };
       });
     },
-    [level, styleForFeature, tooltipForFeature],
+    [level, popupForFeature, styleForFeature, tooltipForFeature],
   );
 }
 
@@ -230,7 +240,9 @@ function useBoundary<G extends Geometry = Geometry>(url: string) {
 
 export default function CalabarzonMap({
   markets,
+  geographicView = "province",
   provinceMetrics,
+  municipalityMetrics = {},
   heatmapLabel,
   heatmapUnit,
   heatmapMin,
@@ -258,6 +270,9 @@ export default function CalabarzonMap({
   const provinceStyle = useCallback(
     (feature?: MapFeature): PathOptions => {
       if (!feature) return boundaryStyle("province");
+      if (geographicView === "municipality") {
+        return { color: "#7c2d12", weight: 1.5, fillColor: "#FFFFFF", fillOpacity: 0.35 };
+      }
       const value = provinceMetrics[featureName(feature.properties)] ?? null;
       return {
         color: "#7c2d12",
@@ -266,16 +281,59 @@ export default function CalabarzonMap({
         fillOpacity: value === null ? 0.35 : 0.68,
       };
     },
-    [heatmapMax, heatmapMin, heatPalette, provinceMetrics],
+    [geographicView, heatmapMax, heatmapMin, heatPalette, provinceMetrics],
   );
 
   const provinceTooltip = useCallback(
     (feature: MapFeature) => {
       const name = featureName(feature.properties);
+      if (geographicView === "municipality") return `${name}: No provincial data in municipal view`;
       const value = provinceMetrics[name] ?? null;
       return `${name}: ${value === null ? "Data unavailable" : formatValue(value, heatmapUnit)}`;
     },
-    [heatmapUnit, provinceMetrics],
+    [geographicView, heatmapUnit, provinceMetrics],
+  );
+
+  const municipalityStyle = useCallback(
+    (feature?: MapFeature): PathOptions => {
+      const psgc = normalizePsgcCode(feature?.properties?.psgc_code);
+      const metric = psgc ? municipalityMetrics[psgc] : undefined;
+      const value = metric?.value ?? null;
+      return {
+        color: "#c89b3c",
+        weight: 1,
+        fillColor: value === null ? "#FFFFFF" : heatColor(value, heatmapMin, heatmapMax, heatPalette),
+        fillOpacity: value === null ? 0.25 : 0.68,
+      };
+    },
+    [heatmapMax, heatmapMin, heatPalette, municipalityMetrics],
+  );
+
+  const municipalityTooltip = useCallback(
+    (feature: MapFeature) => {
+      const psgc = normalizePsgcCode(feature.properties?.psgc_code);
+      const metric = psgc ? municipalityMetrics[psgc] : undefined;
+      return metric && metric.value !== null
+        ? `${featureName(feature.properties)}: ${formatValue(metric.value, metric.unit)}`
+        : `${featureName(feature.properties)}: Data unavailable`;
+    },
+    [municipalityMetrics],
+  );
+
+  const municipalityPopup = useCallback(
+    (feature: MapFeature) => {
+      const psgc = normalizePsgcCode(feature.properties?.psgc_code) ?? "Unavailable";
+      const metric = municipalityMetrics[psgc];
+      const provinceName = String(feature.properties?.province ?? "Unavailable");
+      if (!metric) {
+        return `<strong>${featureName(feature.properties)}</strong><br/>${provinceName}<br/>PSGC: ${psgc}<br/>Data unavailable`;
+      }
+      const value = metric.value === null ? "Data unavailable" : formatValue(metric.value, metric.unit);
+      return `<strong>${featureName(feature.properties)}</strong><br/>${provinceName}<br/>PSGC: ${psgc}<br/>${metric.label}: ${value}${
+        metric.classification ? `<br/>Classification: ${metric.classification}` : ""
+      }<br/><small>MVP synthetic municipal benchmark</small>`;
+    },
+    [municipalityMetrics],
   );
 
   const onEachRegionFeature = useFeatureInteractions("region");
@@ -284,7 +342,12 @@ export default function CalabarzonMap({
     provinceStyle,
     provinceTooltip,
   );
-  const onEachMunicipalityFeature = useFeatureInteractions("municipality");
+  const onEachMunicipalityFeature = useFeatureInteractions(
+    "municipality",
+    geographicView === "municipality" ? municipalityStyle : undefined,
+    geographicView === "municipality" ? municipalityTooltip : undefined,
+    geographicView === "municipality" ? municipalityPopup : undefined,
+  );
 
   const surroundingMask = useMemo(() => {
     if (!region.data) return null;
@@ -318,7 +381,7 @@ export default function CalabarzonMap({
             <GeoJSON data={surroundingMask} style={MASK_STYLE} interactive={false} />
           )}
           <Pane name={MARKET_MARKER_PANE} style={{ zIndex: 650 }} />
-          <LayersControl position="topright">
+          <LayersControl key={geographicView} position="topright">
             {region.data && (
               <LayersControl.Overlay name="CALABARZON boundary" checked>
                 <GeoJSON
@@ -329,7 +392,10 @@ export default function CalabarzonMap({
               </LayersControl.Overlay>
             )}
             {province.data && (
-              <LayersControl.Overlay name={`${heatmapLabel} heatmap`} checked>
+              <LayersControl.Overlay
+                name={geographicView === "municipality" ? "Provincial boundaries" : `${heatmapLabel} heatmap`}
+                checked
+              >
                 <GeoJSON
                   key={`${heatmapLabel}-${heatmapMin}-${heatmapMax}`}
                   data={province.data}
@@ -339,10 +405,14 @@ export default function CalabarzonMap({
               </LayersControl.Overlay>
             )}
             {municipality.data && (
-              <LayersControl.Overlay name="Municipalities">
+              <LayersControl.Overlay
+                name={geographicView === "municipality" ? `${heatmapLabel} heatmap` : "Municipalities"}
+                checked={geographicView === "municipality"}
+              >
                 <GeoJSON
+                  key={`${geographicView}-${heatmapLabel}-${heatmapMin}-${heatmapMax}`}
                   data={municipality.data}
-                  style={boundaryStyle("municipality")}
+                  style={geographicView === "municipality" ? municipalityStyle : boundaryStyle("municipality")}
                   onEachFeature={onEachMunicipalityFeature}
                 />
               </LayersControl.Overlay>
