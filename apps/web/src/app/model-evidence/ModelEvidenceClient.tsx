@@ -12,8 +12,39 @@ type Status = "loading" | "ready" | "error";
 
 const COMPONENT_ORDER = ["demand", "supply", "price"] as const;
 
+const METRIC_LABELS: Record<string, string> = {
+  r2: "R² (fit quality)",
+  mae: "MAE (avg error)",
+  mse: "MSE (squared error)",
+  rmse: "RMSE (typical error)",
+  mape: "MAPE (% error)",
+  smape: "sMAPE (% error)",
+  wape: "WAPE (% error)",
+  mase: "MASE (vs. naïve)",
+  bias: "Bias",
+  normalized_mae_percent: "Normalized MAE (%)",
+  aggregate_bias_percent: "Aggregate bias (%)",
+};
+
+// Everything except r2 is an error/bias metric where smaller (closer to zero) wins.
+const HIGHER_IS_BETTER = new Set(["r2"]);
+
+function metricLabel(key: string): string {
+  return METRIC_LABELS[key] ?? key;
+}
+
 function num(value: number): string {
   return Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(3);
+}
+
+function isModelBetter(key: string, modelValue: number, baselineValue: number): boolean {
+  if (HIGHER_IS_BETTER.has(key)) return modelValue >= baselineValue;
+  return Math.abs(modelValue) <= Math.abs(baselineValue);
+}
+
+function barWidth(value: number, other: number): number {
+  const max = Math.max(Math.abs(value), Math.abs(other), 1e-9);
+  return Math.max(0, Math.min(100, (Math.abs(value) / max) * 100));
 }
 
 export function ModelEvidenceClient() {
@@ -95,20 +126,39 @@ function EvidenceCard({ evidence: c }: { evidence: EvidenceComponent }) {
       ) : (
         <>
           {metrics.length > 0 && (
-            <div className="-mx-1 overflow-x-auto px-1">
-              <table className="w-full min-w-[12rem]">
-                <tbody>
-                  {metrics.map(([k, v]) => (
-                    <tr key={k}>
-                      <td className="text-muted">{k}</td>
-                      <td className="text-right">{num(v)}</td>
-                      {c.baseline[k] !== undefined && (
-                        <td className="text-right text-muted">naïve {num(c.baseline[k])}</td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex flex-col gap-2">
+              {metrics.map(([k, v]) => {
+                const baselineValue = c.baseline[k];
+                if (baselineValue === undefined) {
+                  return (
+                    <div key={k} className="flex justify-between gap-3">
+                      <span className="text-muted">{metricLabel(k)}</span>
+                      <span>{num(v)}</span>
+                    </div>
+                  );
+                }
+                const modelWins = isModelBetter(k, v, baselineValue);
+                return (
+                  <div key={k}>
+                    <div className="meter-row">
+                      <span className="font-medium">{metricLabel(k)}</span>
+                      <span className={modelWins ? "text-[var(--color-leaf-700)]" : "text-muted"}>
+                        {num(v)} vs naïve {num(baselineValue)}
+                      </span>
+                    </div>
+                    <div className="meter">
+                      <span
+                        style={{
+                          width: `${barWidth(v, baselineValue)}%`,
+                          background: modelWins
+                            ? "var(--color-leaf-500)"
+                            : "var(--color-neutral-400)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
           {c.province_holdout.length > 0 && (
@@ -116,8 +166,15 @@ function EvidenceCard({ evidence: c }: { evidence: EvidenceComponent }) {
               <summary className="cursor-pointer text-[var(--color-accent-600)]">
                 Province hold-out
               </summary>
-              <div className="-mx-1 mt-1 overflow-x-auto px-1">
-                <table className="w-full min-w-[16rem]">
+              <div className="table-wrap mt-1">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      {Object.keys(c.province_holdout[0]).map((k) => (
+                        <th key={k}>{metricLabel(k)}</th>
+                      ))}
+                    </tr>
+                  </thead>
                   <tbody>
                     {c.province_holdout.map((row, i) => (
                       <tr key={i}>

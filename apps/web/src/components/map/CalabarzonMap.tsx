@@ -194,15 +194,28 @@ function useFeatureInteractions(
 // collapsing, orientation change, browser chrome resizing), leaving the map
 // stretched or cropped until something nudges it. Watch the container and
 // re-measure whenever it changes.
+//
+// The container also needs an explicit pixel width kept in sync with its
+// parent: on the Mapping page's wide layout, `w-full`/`max-w-full` alone can
+// leave this element rendered at the page's max container width instead of
+// its actual (narrower, sidebar-adjacent) column, pushing the map, its
+// legends, and the market-detail panel outside the visible area.
 function useMapResize(mapRef: React.RefObject<LeafletMap | null>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
+    const parent = el?.parentElement;
+    if (!el || !parent || typeof ResizeObserver === "undefined") return;
+
+    const sync = () => {
+      el.style.width = `${parent.clientWidth}px`;
       mapRef.current?.invalidateSize();
-    });
+    };
+
+    const observer = new ResizeObserver(sync);
+    sync();
+    observer.observe(parent);
     observer.observe(el);
     return () => observer.disconnect();
   }, [mapRef]);
@@ -357,11 +370,11 @@ export default function CalabarzonMap({
   const kadiwaMarkets = markets.filter(isKadiwaMarket);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       {error && <p className="state state-error">{error}</p>}
       <div
         ref={resizeContainerRef}
-        className="relative isolate h-[60vh] min-h-[360px] w-full overflow-hidden rounded-lg border border-line sm:h-[70vh]"
+        className="relative isolate h-[60dvh] min-h-[360px] w-full max-w-full overflow-hidden rounded-lg border border-line sm:h-[70dvh]"
       >
         <MapContainer
           ref={mapRef}
