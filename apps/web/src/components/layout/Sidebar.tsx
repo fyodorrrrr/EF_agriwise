@@ -57,8 +57,9 @@ export function Sidebar() {
   return (
     <>
       <div className="sidebar">
-        <Link href="/" className="sidebar-brand">
-          AgriWise
+        <Link href="/" className="sidebar-brand" aria-label="AgriWise">
+          <img className="brand-mark" src="/brand/agriwise-mark.png" alt="" aria-hidden="true" />
+          <span>griwise</span>
         </Link>
 
         <nav className="sidenav" aria-label="Primary">

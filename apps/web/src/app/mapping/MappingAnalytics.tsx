@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { BrandLoader } from "@/components/BrandLoader";
 import { formatValue } from "@/components/forecast/verdict";
 import { MapPageClient } from "@/components/map/MapPageClient";
 import { COMMODITIES, PROVINCES } from "@/lib/domain";
@@ -156,7 +157,7 @@ export function MappingAnalytics() {
         {marketsError && (
           <p className="state state-error">Couldn&apos;t load market locations.</p>
         )}
-        {!error && !outlooks && <p className="state state-loading">Loading…</p>}
+        {!error && !outlooks && <BrandLoader />}
 
         {outlooks && (
           <ul className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-5">

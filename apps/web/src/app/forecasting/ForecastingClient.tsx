@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { ComponentCard } from "@/components/forecast/ComponentCard";
@@ -94,7 +95,7 @@ export function ForecastingClient() {
         <p className="state">Pick a commodity and province above to see the forecast.</p>
       )}
 
-      {status === "loading" && <p className="state state-loading">Loading forecast…</p>}
+      {status === "loading" && <BrandLoader label="Loading forecast…" />}
       {status === "error" && (
         <p className="state state-error">Couldn&apos;t reach the forecast service.</p>
       )}

@@ -79,7 +79,7 @@ export function FloatingChat() {
         aria-label="Ask AgriWise"
         onClick={() => setOpen((v) => !v)}
       >
-        A
+        <img className="fab-mark" src="/brand/agriwise-mark-white.png" alt="" aria-hidden="true" />
       </button>
     </>
   );

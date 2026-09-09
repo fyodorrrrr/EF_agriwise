@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { BrandLoader } from "@/components/BrandLoader";
 import { verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { getEvidence } from "@/lib/forecast";
 import { COMMODITIES } from "@/lib/domain";
@@ -47,7 +48,7 @@ export function ModelEvidenceClient() {
         </div>
       </div>
 
-      {status === "loading" && <p className="state state-loading">Loading evidence…</p>}
+      {status === "loading" && <BrandLoader label="Loading evidence…" />}
       {status === "error" && (
         <p className="state state-error">Couldn&apos;t reach the forecast service.</p>
       )}

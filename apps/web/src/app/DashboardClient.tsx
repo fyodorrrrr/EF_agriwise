@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { BrandLoader } from "@/components/BrandLoader";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { COMMODITIES } from "@/lib/domain";
 import { getOutlook } from "@/lib/forecast";
@@ -97,7 +98,7 @@ export function DashboardClient() {
 
       {!province && <p className="state">Choose a province above to see its outlook.</p>}
 
-      {status === "loading" && <p className="state state-loading">Loading outlook…</p>}
+      {status === "loading" && <BrandLoader label="Loading outlook…" />}
 
       {status === "error" && (
         <p className="state state-error">

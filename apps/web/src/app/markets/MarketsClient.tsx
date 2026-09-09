@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { rankMarkets } from "@/lib/markets";
@@ -65,7 +66,7 @@ export function MarketsClient() {
       </div>
 
       {!key && <p className="state">Pick a commodity and province to see ranked markets.</p>}
-      {status === "loading" && <p className="state state-loading">Ranking markets…</p>}
+      {status === "loading" && <BrandLoader label="Ranking markets…" />}
       {status === "error" && (
         <p className="state state-error">Couldn&apos;t reach the markets service.</p>
       )}
