@@ -6,6 +6,42 @@
   outline: none;
 }
 
+.kadiwa-leaflet-icon {
+  background: transparent;
+  border: 0;
+}
+
+.market-leaflet-icon {
+  background: transparent;
+  border: 0;
+}
+
+.market-marker {
+  display: block;
+  width: 32px;
+  height: 38px;
+  filter: drop-shadow(0 2px 3px rgb(23 22 21 / 40%));
+}
+
+.kadiwa-marker {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 7px;
+  box-shadow: 0 1px 4px rgb(23 22 21 / 45%);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.kadiwa-marker--permanent { background: #217a3a; }
+.kadiwa-marker--recurring { background: #0f7490; border-radius: 999px; }
+.kadiwa-marker--temporary { background: #c76a12; transform: rotate(45deg); }
+.kadiwa-marker--temporary::first-letter { display: inline-block; transform: rotate(-45deg); }
+
 /* Leaflet's default zoom/layers controls are ~26px — too small to reliably
    tap on mobile. Match the 44px touch target used elsewhere in the app
    (see .sidenav-item in globals.css) below the sm breakpoint. */

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from markets.ranking import rank_markets
-from markets.registry import MarketRegistry
+from markets.registry import MarketRegistry, _kadiwa_sources
 
 _ARTIFACTS = Path(__file__).resolve().parents[3] / "ml" / "artifacts"
 
@@ -33,6 +33,50 @@ def test_registry_loads_only_valid_calabarzon_markets():
         assert m.province in ("Batangas", "Cavite", "Laguna", "Quezon", "Rizal")
         assert 13.0 <= m.latitude <= 15.2 and 120.0 <= m.longitude <= 122.3
         assert m.coordinate_confidence  # approximate points kept, never blank
+
+
+def test_full_kadiwa_registry_is_canonical_and_records_are_unique():
+    registry = _registry()
+    full = _ARTIFACTS / "market_coordinates" / "kadiwa_markets_full_registry_agriwise_schema.csv"
+    if not full.is_file():
+        pytest.skip("full KADIWA registry not present in this checkout")
+
+    assert _kadiwa_sources(_ARTIFACTS / "market_coordinates") == [full]
+    kadiwa = [m for m in registry.markets if (m.market_type or "").startswith("KADIWA ")]
+    assert kadiwa
+    assert len([m.market_id for m in registry.markets]) == len(
+        {m.market_id for m in registry.markets}
+    )
+    assert {m.market_type for m in kadiwa} >= {
+        "KADIWA Permanent",
+        "KADIWA Recurring",
+        "KADIWA Temporary",
+    }
+    assert all(m.operator is not None for m in kadiwa)
+
+
+def test_full_kadiwa_source_prevents_active_source_duplicates_and_skips_invalid_rows(tmp_path):
+    coords = tmp_path / "market_coordinates"
+    coords.mkdir()
+    (coords / "CALABARZON_market_coordinates.csv").write_text(
+        "market_id,market_name,municipality_city,province,latitude,longitude\n"
+        "ORD-1,Ordinary,Calamba,Laguna,14.2,121.1\n"
+    )
+    (coords / "kadiwa_markets_full_registry_agriwise_schema.csv").write_text(
+        "market_id,market_name,municipality_city,province,latitude,longitude,market_type\n"
+        "K-1,Permanent,Calamba,Laguna,14.2,121.1,KADIWA Permanent\n"
+        "K-BAD,Invalid,Calamba,Laguna,99,121.1,KADIWA Temporary\n"
+    )
+    (coords / "kadiwa_markets_active.csv").write_text(
+        "market_id,market_name,municipality_city,province,latitude,longitude,market_type\n"
+        "K-1,Duplicate,Calamba,Laguna,14.2,121.1,KADIWA Permanent\n"
+        "K-2,Active only,Calamba,Laguna,14.2,121.1,KADIWA Recurring\n"
+    )
+
+    registry = MarketRegistry.load(tmp_path)
+
+    assert [m.market_id for m in registry.markets] == ["ORD-1", "K-1"]
+    assert any("K-BAD: coordinates outside CALABARZON" in item for item in registry.diagnostics)
 
 
 def test_ranking_orders_by_score_and_explains_each_pick():

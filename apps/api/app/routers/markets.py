@@ -41,6 +41,7 @@ def _record(m) -> MarketRecord:
         latitude=m.latitude,
         longitude=m.longitude,
         market_type=m.market_type,
+        operator=m.operator,
         coordinate_confidence=m.coordinate_confidence,
         source_url=m.source_url,
         notes=m.notes,

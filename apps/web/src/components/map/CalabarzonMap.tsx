@@ -11,14 +11,22 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
-import type { Layer, LatLngBoundsExpression, Map as LeafletMap, Path, PathOptions } from "leaflet";
+import {
+  divIcon,
+  type Layer,
+  type LatLngBoundsExpression,
+  type Map as LeafletMap,
+  type Path,
+  type PathOptions,
+} from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CircleMarker,
   GeoJSON,
   LayerGroup,
   LayersControl,
   MapContainer,
+  Marker,
+  Pane,
   Popup,
   TileLayer,
   Tooltip,
@@ -52,6 +60,7 @@ const MAX_BOUNDS: LatLngBoundsExpression = [
 ];
 
 const MIN_ZOOM = 8;
+const MARKET_MARKER_PANE = "market-markers";
 
 const BOUNDARY_FILES = {
   region: "/gis/calabarzon/region.geojson",
@@ -78,6 +87,49 @@ const MASK_STYLE = {
   fillColor: "#1e293b",
   fillOpacity: 0.55,
 } as const;
+
+type KadiwaMarkerDetails = {
+  className: string;
+  glyph: string;
+  label: string;
+};
+
+export function isKadiwaMarket(market: MarketRecord): boolean {
+  return market.market_type?.startsWith("KADIWA ") ?? false;
+}
+
+export function kadiwaMarkerDetails(marketType: string | null): KadiwaMarkerDetails {
+  switch (marketType) {
+    case "KADIWA Permanent":
+      return { className: "kadiwa-marker--permanent", glyph: "▣", label: "Permanent KADIWA" };
+    case "KADIWA Temporary":
+      return { className: "kadiwa-marker--temporary", glyph: "◆", label: "Temporary KADIWA" };
+    default:
+      return { className: "kadiwa-marker--recurring", glyph: "↻", label: "Recurring KADIWA" };
+  }
+}
+
+function kadiwaIcon(details: KadiwaMarkerDetails) {
+  return divIcon({
+    className: "kadiwa-leaflet-icon",
+    html: `<span class="kadiwa-marker ${details.className}" aria-hidden="true">${details.glyph}</span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
+function marketIcon() {
+  return divIcon({
+    className: "market-leaflet-icon",
+    html: `<svg class="market-marker" viewBox="0 0 32 38" aria-hidden="true">
+      <path d="M16 1.5C8.7 1.5 3 7.1 3 14.1c0 9.4 13 21.9 13 21.9s13-12.5 13-21.9C29 7.1 23.3 1.5 16 1.5Z" fill="#334155" stroke="#ffffff" stroke-width="2.5"/>
+      <path d="M8.5 13.5h15l-1.4-4.3H9.9l-1.4 4.3Z" fill="#fbbf24" stroke="#ffffff" stroke-width="1"/>
+      <path d="M10.5 14v7.5h11V14M13 21.5v-4.2h6v4.2" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/>
+    </svg>`,
+    iconSize: [32, 38],
+    iconAnchor: [16, 36],
+  });
+}
 
 function useFeatureInteractions(
   level: BoundaryLevel,
@@ -206,6 +258,8 @@ export default function CalabarzonMap({
     if (!region.data) return null;
     return mask(region.data, MASK_EXTENT);
   }, [region.data]);
+  const ordinaryMarkets = markets.filter((market) => !isKadiwaMarket(market));
+  const kadiwaMarkets = markets.filter(isKadiwaMarket);
 
   return (
     <div className="flex flex-col gap-2">
@@ -230,6 +284,7 @@ export default function CalabarzonMap({
           {surroundingMask && (
             <GeoJSON data={surroundingMask} style={MASK_STYLE} interactive={false} />
           )}
+          <Pane name={MARKET_MARKER_PANE} style={{ zIndex: 650 }} />
           <LayersControl position="topright">
             {region.data && (
               <LayersControl.Overlay name="CALABARZON boundary" checked>
@@ -259,21 +314,16 @@ export default function CalabarzonMap({
                 />
               </LayersControl.Overlay>
             )}
-            <LayersControl.Overlay name={`Markets (${markets.length})`} checked>
+            <LayersControl.Overlay name={`Ordinary Markets (${ordinaryMarkets.length})`} checked>
               <LayerGroup>
-                {markets.map((market) => (
-                  <CircleMarker
+                {ordinaryMarkets.map((market) => (
+                  <Marker
                     key={market.market_id}
-                    center={[market.latitude, market.longitude]}
-                    radius={6}
-                    pathOptions={{
-                      color: "#ffffff",
-                      weight: 2,
-                      fillColor: "#171615",
-                      fillOpacity: 1,
-                    }}
+                    position={[market.latitude, market.longitude]}
+                    icon={marketIcon()}
+                    pane={MARKET_MARKER_PANE}
                   >
-                    <Tooltip direction="top" offset={[0, -5]} opacity={1}>
+                    <Tooltip direction="top" offset={[0, -34]} opacity={1}>
                       <strong>{market.market_name}</strong>
                       <br />
                       {market.municipality}, {market.province}
@@ -299,8 +349,55 @@ export default function CalabarzonMap({
                         )}
                       </div>
                     </Popup>
-                  </CircleMarker>
+                  </Marker>
                 ))}
+              </LayerGroup>
+            </LayersControl.Overlay>
+            <LayersControl.Overlay name={`KADIWA Markets (${kadiwaMarkets.length})`} checked>
+              <LayerGroup>
+                {kadiwaMarkets.map((market) => {
+                  const details = kadiwaMarkerDetails(market.market_type);
+                  return (
+                    <Marker
+                      key={market.market_id}
+                      position={[market.latitude, market.longitude]}
+                      icon={kadiwaIcon(details)}
+                      pane={MARKET_MARKER_PANE}
+                    >
+                      <Tooltip direction="top" offset={[0, -16]} opacity={1}>
+                        <strong>{market.market_name}</strong>
+                        <br />
+                        {market.municipality}, {market.province}
+                        <br />
+                        {details.label}
+                      </Tooltip>
+                      <Popup>
+                        <div className="flex min-w-48 flex-col gap-1 text-sm">
+                          <strong>{market.market_name}</strong>
+                          <span>
+                            {market.municipality}, {market.province}
+                          </span>
+                          <span>{market.market_type ?? details.label}</span>
+                          {market.notes && <span className="text-muted">{market.notes}</span>}
+                          {market.operator && (
+                            <>
+                              <span className="mt-1 font-medium">Operator</span>
+                              <span>{market.operator}</span>
+                            </>
+                          )}
+                          <span className="text-muted">
+                            {market.coordinate_confidence.toLowerCase()}-confidence coordinates
+                          </span>
+                          {market.source_url && (
+                            <a href={market.source_url} target="_blank" rel="noreferrer">
+                              View official source
+                            </a>
+                          )}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
               </LayerGroup>
             </LayersControl.Overlay>
           </LayersControl>
@@ -320,6 +417,18 @@ export default function CalabarzonMap({
           <div className="mt-1 flex justify-between gap-4 text-[11px] text-muted">
             <span>{formatValue(heatmapMin, heatmapUnit)}</span>
             <span>{formatValue(heatmapMax, heatmapUnit)}</span>
+          </div>
+        </div>
+        <div
+          className="pointer-events-none absolute right-3 bottom-3 z-[1000] rounded-md border border-line bg-white/95 px-3 py-2 text-xs shadow-md sm:right-4 sm:bottom-4"
+          aria-label="Market marker legend"
+        >
+          <div className="font-semibold text-ink">Market markers</div>
+          <div className="mt-1 grid grid-cols-[1rem_auto] gap-x-2 gap-y-1 text-muted">
+            <span className="text-center text-base leading-none text-[#334155]">⌂</span><span>Local market</span>
+            <span className="text-center text-base leading-none text-[#217a3a]">▣</span><span>Permanent KADIWA</span>
+            <span className="text-center text-base leading-none text-[#0f7490]">↻</span><span>Recurring KADIWA</span>
+            <span className="text-center text-base leading-none text-[#c76a12]">◆</span><span>Temporary KADIWA</span>
           </div>
         </div>
       </div>

@@ -9,6 +9,7 @@ export interface MarketRecord {
   latitude: number;
   longitude: number;
   market_type: string | null;
+  operator: string | null;
   coordinate_confidence: string;
   source_url: string | null;
   notes: string | null;

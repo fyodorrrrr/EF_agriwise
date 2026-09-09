@@ -22,6 +22,7 @@ _LON_RANGE = (120.0, 122.3)
 _PROVINCES = ("Batangas", "Cavite", "Laguna", "Quezon", "Rizal")
 
 _MARKETS_CSV = "CALABARZON_market_coordinates.csv"
+_KADIWA_FULL_CSV = "kadiwa_markets_full_registry_agriwise_schema.csv"
 _CENTROIDS_CSV = "municipality_centroids.csv"
 _CONFIG_REL = Path("config") / "market_recommendation_config.json"
 
@@ -35,6 +36,7 @@ class MarketRecord:
     latitude: float
     longitude: float
     market_type: str | None
+    operator: str | None
     coordinate_confidence: str
     source_url: str | None
     notes: str | None
@@ -53,7 +55,10 @@ class MarketRegistry:
         diagnostics: list[str] = []
         config = _read_json(artifacts_dir / _CONFIG_REL, diagnostics)
 
-        markets = _load_markets(coords_dir / _MARKETS_CSV, diagnostics)
+        seen: set[str] = set()
+        markets = _load_markets(coords_dir / _MARKETS_CSV, diagnostics, seen)
+        for source in _kadiwa_sources(coords_dir):
+            markets.extend(_load_markets(source, diagnostics, seen))
         centroids = _load_centroids(coords_dir / _CENTROIDS_CSV, diagnostics)
 
         return cls(
@@ -95,7 +100,19 @@ def _read_json(path: Path, diagnostics: list[str]) -> dict:
         return {}
 
 
-def _load_markets(path: Path, diagnostics: list[str]) -> list[MarketRecord]:
+def _kadiwa_sources(coords_dir: Path) -> list[Path]:
+    """Prefer the full registry; otherwise load and de-duplicate KADIWA files."""
+    full = coords_dir / _KADIWA_FULL_CSV
+    if full.is_file():
+        return [full]
+    return sorted(
+        path
+        for path in coords_dir.glob("*.csv")
+        if "kadiwa" in path.name.lower()
+    )
+
+
+def _load_markets(path: Path, diagnostics: list[str], seen: set[str]) -> list[MarketRecord]:
     if not path.is_file():
         diagnostics.append(f"{path.name} missing; market directory is empty")
         return []
@@ -105,12 +122,11 @@ def _load_markets(path: Path, diagnostics: list[str]) -> list[MarketRecord]:
     frame.columns = [c.lstrip("﻿ï»¿") for c in frame.columns]
 
     records: list[MarketRecord] = []
-    seen: set[str] = set()
     for _, row in frame.iterrows():
         mid = row.get("market_id", "").strip()
         province = row.get("province", "").strip()
         if not mid or mid in seen:
-            diagnostics.append(f"market row skipped: missing/duplicate id {mid!r}")
+            diagnostics.append(f"{path.name}: market row skipped: missing/duplicate id {mid!r}")
             continue
         if province not in _PROVINCES:
             diagnostics.append(f"{mid}: province {province!r} not in CALABARZON")
@@ -136,6 +152,7 @@ def _load_markets(path: Path, diagnostics: list[str]) -> list[MarketRecord]:
                 latitude=lat,
                 longitude=lon,
                 market_type=row.get("market_type", "").strip() or None,
+                operator=row.get("operator", "").strip() or None,
                 coordinate_confidence=confidence,
                 source_url=row.get("source_url", "").strip() or None,
                 notes=row.get("notes", "").strip() or None,
