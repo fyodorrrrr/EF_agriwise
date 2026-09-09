@@ -125,6 +125,12 @@ describe("CalabarzonMap", () => {
     expect(screen.getAllByText(/Biñan, Laguna/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Public Market/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/High-confidence coordinates/i).length).toBeGreaterThan(0);
+
+    // Heatmap legend explains what each color band means, not just the numeric range.
+    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("Moderate")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("Very High")).toBeInTheDocument();
   });
 
   it("distinguishes KADIWA marker types and keeps their layer separate", async () => {

@@ -37,6 +37,7 @@ import { featureName, loadGeoJson } from "@/lib/gis/geojson";
 import { normalizePsgcCode } from "@/lib/gis/psgc";
 import {
   boundaryStyle,
+  heatBuckets,
   heatColor,
   heatGradientCss,
   type BoundaryLevel,
@@ -75,15 +76,19 @@ const BOUNDARY_FILES = {
   municipality: "/gis/calabarzon/municipalities.geojson",
 } as const;
 
+// Kept tight around MAX_BOUNDS (not a full SE-Asia extent) -- nothing beyond MAX_BOUNDS
+// is ever reachable (maxBoundsViscosity=1.0), and an oversized mask polygon makes
+// Leaflet's SVG renderer reproject a huge pixel-coordinate path on every pan, which
+// visibly lags behind the (instantly CSS-transformed) tile layer and flickers.
 const MASK_EXTENT: Polygon = {
   type: "Polygon",
   coordinates: [
     [
-      [110, 5],
-      [130, 5],
-      [130, 22],
-      [110, 22],
-      [110, 5],
+      [118.7, 11.4],
+      [123.7, 11.4],
+      [123.7, 16.7],
+      [118.7, 16.7],
+      [118.7, 11.4],
     ],
   ],
 };
@@ -293,7 +298,7 @@ export default function CalabarzonMap({
       {error && <p className="state state-error">{error}</p>}
       <div
         ref={resizeContainerRef}
-        className="relative h-[60vh] min-h-[360px] w-full overflow-hidden rounded-lg border border-line sm:h-[70vh]"
+        className="relative isolate h-[60vh] min-h-[360px] w-full overflow-hidden rounded-lg border border-line sm:h-[70vh]"
       >
         <MapContainer
           ref={mapRef}
@@ -403,6 +408,17 @@ export default function CalabarzonMap({
             <div className="mt-1 flex justify-between gap-4 text-[11px] text-muted">
               <span>{formatValue(heatmapMin, heatmapUnit)}</span>
               <span>{formatValue(heatmapMax, heatmapUnit)}</span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted">
+              {heatBuckets(heatPalette).map((bucket) => (
+                <span key={bucket.label} className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2.5 w-2.5 flex-none rounded-sm"
+                    style={{ background: bucket.color }}
+                  />
+                  {bucket.label}
+                </span>
+              ))}
             </div>
           </div>
           <div
