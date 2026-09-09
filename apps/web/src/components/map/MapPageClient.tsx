@@ -1,14 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { BrandLoader } from "@/components/BrandLoader";
 import type { CalabarzonMapProps } from "./CalabarzonMap";
 
 const CalabarzonMap = dynamic<CalabarzonMapProps>(() => import("./CalabarzonMap"), {
   ssr: false,
   loading: () => (
-    <div className="brand-loader h-[60vh] min-h-[360px] w-full rounded-lg border border-line sm:h-[70vh]">
-      <img src="/brand/agriwise-mark.png" alt="" aria-hidden="true" />
-      <span>Loading map…</span>
+    <div className="flex h-[60vh] min-h-[360px] w-full items-center justify-center rounded-lg border border-line sm:h-[70vh]">
+      <BrandLoader label="Loading map…" />
     </div>
   ),
 });
