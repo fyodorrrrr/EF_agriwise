@@ -1,12 +1,8 @@
 import type { OutlookComponent } from "@/types/forecast";
 import { Sparkline } from "@/components/forecast/Sparkline";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
-
-const TITLE: Record<string, string> = {
-  demand: "Demand",
-  supply: "Supply",
-  price: "Price",
-};
+import { METRIC_INFO, VERDICT_MEANING } from "@/components/forecast/glossary";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 function latest(component: OutlookComponent): number | null {
   const series = component.forecast?.length
@@ -28,19 +24,28 @@ export function ComponentCard({
 }) {
   const insufficient = component.verdict === "INSUFFICIENT_DATA";
   const value = latest(component);
-  const label = kind === "demand" ? "Estimated Demand Proxy" : TITLE[kind];
+  const info = METRIC_INFO[kind];
 
   return (
     <div className="card flex flex-col gap-2">
       <div className="card-head">
         <div>
-          <span className="card-kicker">{label}</span>
+          <span className="inline-flex items-center gap-1">
+            <span className="card-kicker">{info.label}</span>
+            <InfoTip label={`What is ${info.label}?`}>
+              {info.whatItMeans}
+              {info.unitNote ? ` ${info.unitNote}` : ""}
+            </InfoTip>
+          </span>
           {detailed && component.label && (
             <p className="text-xs text-muted">{component.label}</p>
           )}
         </div>
-        <span className={verdictBadgeClass(component.verdict)}>
-          {verdictLabel(component.verdict)}
+        <span className="inline-flex items-center gap-1">
+          <span className={verdictBadgeClass(component.verdict)}>
+            {verdictLabel(component.verdict)}
+          </span>
+          <InfoTip label="What does this badge mean?">{VERDICT_MEANING[component.verdict]}</InfoTip>
         </span>
       </div>
 

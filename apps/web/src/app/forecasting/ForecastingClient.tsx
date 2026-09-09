@@ -7,9 +7,17 @@ import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { ComponentCard } from "@/components/forecast/ComponentCard";
+import { GlossaryPanel } from "@/components/forecast/GlossaryPanel";
 import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
+import {
+  OPPORTUNITY_SCORE_EXPLAINER,
+  NO_SUPPLY_DEMAND_RATIO,
+  classificationLabel,
+  classificationMeaning,
+} from "@/components/forecast/glossary";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { COMMODITIES } from "@/lib/domain";
 import { getMethodology, getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
@@ -168,6 +176,7 @@ export function ForecastingClient() {
           })()}
 
           <OpportunityCard outlook={outlook} methodology={methodology} />
+          <GlossaryPanel />
           {methodology && <MethodologyPanel methodology={methodology} />}
         </>
       )}
@@ -259,7 +268,12 @@ function OpportunityCard({
     <div className="card flex flex-col gap-3">
       <div className="card-head">
         <div>
-          <span className="card-kicker">Opportunity</span>
+          <span className="inline-flex items-center gap-1">
+            <span className="card-kicker">Opportunity</span>
+            <InfoTip label="What is the Opportunity score?">
+              {OPPORTUNITY_SCORE_EXPLAINER} {NO_SUPPLY_DEMAND_RATIO}
+            </InfoTip>
+          </span>
           <p className="text-xs text-muted">
             Peer-relative decision support — not a physical supply gap, not a learned
             target.
@@ -270,8 +284,11 @@ function OpportunityCard({
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="text-2xl font-bold">{opp.score}</span>
-        <span className="badge badge-accent">
-          {opp.classification?.replaceAll("_", " ").toLowerCase()}
+        <span className="inline-flex items-center gap-1">
+          <span className="badge badge-accent">{classificationLabel(opp.classification)}</span>
+          <InfoTip label="What does this band mean?">
+            {classificationMeaning(opp.classification)}
+          </InfoTip>
         </span>
         {opp.shared_quarter && (
           <span className="text-xs text-muted">
@@ -300,6 +317,10 @@ function OpportunityCard({
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-muted">
+        Each score (0–100) is this province&apos;s rank against the other four for that
+        factor — 100 is the highest among the five, not &ldquo;100%&rdquo;.
+      </p>
 
       <WhyThisResult
         kind="opportunity"

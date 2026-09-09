@@ -203,6 +203,25 @@
   .disclosure-body ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
   .disclosure-note { font-size: var(--text-xs); font-style: italic; color: var(--color-muted); }
 
+  /* — info tip — small "what does this mean?" popover on a metric or badge — */
+  .info-tip { position: relative; display: inline-flex; vertical-align: middle; }
+  .info-tip > summary {
+    display: flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 999px; list-style: none; cursor: pointer;
+    font-size: 10px; font-weight: 700; line-height: 1;
+    background: var(--color-neutral-200); color: var(--color-neutral-700);
+  }
+  .info-tip > summary::-webkit-details-marker { display: none; }
+  .info-tip > summary::before { content: "i"; font-style: italic; }
+  .info-tip > summary:hover { background: var(--color-accent-200); color: var(--color-accent-800); }
+  .info-tip[open] > summary { background: var(--color-accent-500); color: #fff; }
+  .info-tip-panel {
+    position: absolute; z-index: 20; top: calc(100% + 6px); left: 0;
+    width: max-content; max-width: 220px; padding: 8px 10px;
+    background: var(--color-ink); color: #fff; font-size: var(--text-xs); font-weight: 400;
+    line-height: 1.4; border-radius: var(--radius-sm); box-shadow: var(--shadow-lg);
+  }
+
   /* — input — */
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field > label { font-size: var(--text-sm); font-weight: 500; color: var(--color-muted); }

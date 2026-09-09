@@ -12,6 +12,15 @@ import type { Commodity, OutlookResponse } from "@/types/forecast";
 import { formatQuarter, formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Sparkline } from "@/components/forecast/Sparkline";
+import { GlossaryPanel } from "@/components/forecast/GlossaryPanel";
+import {
+  METRIC_INFO,
+  OPPORTUNITY_SCORE_EXPLAINER,
+  NO_SUPPLY_DEMAND_RATIO,
+  classificationLabel,
+  classificationMeaning,
+} from "@/components/forecast/glossary";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 type Row = { commodity: Commodity; outlook: OutlookResponse };
 type Status = "idle" | "loading" | "ready" | "error";
@@ -96,6 +105,8 @@ export function DashboardClient() {
         <ProvinceSelect value={province} onChange={setProvince} />
       </div>
 
+      <GlossaryPanel />
+
       {!province && <p className="state">Choose a province above to see its outlook.</p>}
 
       {status === "loading" && <BrandLoader label="Loading outlook…" />}
@@ -121,7 +132,7 @@ export function DashboardClient() {
               value={best ? best.commodity : "—"}
               sublabel={
                 best?.outlook.opportunity.classification
-                  ? best.outlook.opportunity.classification.replaceAll("_", " ").toLowerCase()
+                  ? classificationLabel(best.outlook.opportunity.classification)
                   : undefined
               }
             />
@@ -147,8 +158,14 @@ export function DashboardClient() {
                       Opportunity: {verdictLabel("INSUFFICIENT_DATA")}
                     </span>
                   ) : (
-                    <span className="badge badge-accent">
-                      {opp.classification?.replaceAll("_", " ").toLowerCase()} · {opp.score}
+                    <span className="inline-flex items-center gap-1">
+                      <span className="badge badge-accent">
+                        {classificationLabel(opp.classification)} · {opp.score}
+                      </span>
+                      <InfoTip label="What does this score mean?">
+                        {OPPORTUNITY_SCORE_EXPLAINER} {classificationMeaning(opp.classification)}{" "}
+                        {NO_SUPPLY_DEMAND_RATIO}
+                      </InfoTip>
                     </span>
                   )}
                 </div>
@@ -160,8 +177,12 @@ export function DashboardClient() {
                     key={kind}
                     className="flex items-center justify-between gap-3 sm:flex-col sm:items-start sm:gap-1"
                   >
-                    <span className="card-kicker">
-                      {kind === "demand" ? "Demand proxy" : kind}
+                    <span className="inline-flex items-center gap-1">
+                      <span className="card-kicker">{METRIC_INFO[kind].label}</span>
+                      <InfoTip label={`What is ${METRIC_INFO[kind].label}?`}>
+                        {METRIC_INFO[kind].whatItMeans}
+                        {METRIC_INFO[kind].unitNote ? ` ${METRIC_INFO[kind].unitNote}` : ""}
+                      </InfoTip>
                     </span>
                     <span className="flex items-center gap-2 sm:mt-1 sm:flex-col sm:items-start sm:gap-1">
                       <span className="text-md font-semibold">
