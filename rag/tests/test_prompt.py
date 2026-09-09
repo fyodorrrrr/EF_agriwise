@@ -50,9 +50,7 @@ def test_analytics_context_is_separate_and_optional():
     with_ctx = build_messages(
         "q", [], [_chunk("Doc", 1, 1)], analytics_context="Rice demand: USABLE_PROXY"
     )
-    ctx_msgs = [
-        m for m in with_ctx if m["content"].startswith("Current AgriWise analytics context:")
-    ]
+    ctx_msgs = [m for m in with_ctx if m["content"].startswith("FORECAST DATA")]
     assert len(ctx_msgs) == 1
     assert ctx_msgs[0]["role"] == "system"
     assert "Rice demand: USABLE_PROXY" in ctx_msgs[0]["content"]

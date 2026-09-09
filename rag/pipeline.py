@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel
 
 from rag.config import RagConfig
 from rag.generator import RagGenerationError
 from rag.prompt import ChatTurn, build_messages
 from rag.retriever import RetrievedChunk
-
 
 OUT_OF_SCOPE_ANSWER = (
     "I can only answer questions about the DA farm-business and good-agricultural-practice "
@@ -68,6 +69,36 @@ def _citations(chunks: list[RetrievedChunk]) -> list[Citation]:
     return out
 
 
+def _plain_text(text: str) -> str:
+    """Strip Markdown the model may still emit — farmers get plain text."""
+    t = re.sub(r"\*\*(.+?)\*\*", r"\1", text)          # **bold**
+    t = re.sub(r"__(.+?)__", r"\1", t)                 # __bold__
+    t = re.sub(r"`([^`]+)`", r"\1", t)                 # `code`
+    t = re.sub(r"^\s{0,3}#{1,6}\s+", "", t, flags=re.MULTILINE)   # # headings
+    t = re.sub(r"^\s{0,3}>\s?", "", t, flags=re.MULTILINE)        # > quotes
+    t = re.sub(r"^(\s*)[*+]\s+", r"\1- ", t, flags=re.MULTILINE)  # *,+ bullets -> -
+    t = re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
+
+
+def _title_key(title: str, words: int = 2) -> str:
+    """First words of a title, lowercased — tolerant of the model trimming a
+    long manual title (e.g. writing "[Field Guide…, p.27]")."""
+    return " ".join(re.sub(r"[^\w\s]", " ", title).lower().split()[:words])
+
+
+def _cited(answer: str, chunks: list[RetrievedChunk]) -> list[Citation]:
+    """Keep only the retrieved sources the answer actually referred to, so a
+    forecast-only reply does not surface unused manual pages. No bracketed tag
+    at all → the model cited nothing → no citations."""
+    cites = _citations(chunks)
+    brackets = " ".join(re.findall(r"\[([^\[\]]{0,160})\]", answer)).lower()
+    if not brackets:
+        return []
+    kept = [c for c in cites if _title_key(c.doc_title) in brackets]
+    return kept or cites
+
+
 class RagPipeline:
     def __init__(self, retriever, generator) -> None:
         self._retriever = retriever
@@ -116,9 +147,9 @@ class RagPipeline:
         messages = build_messages(
             question, history or [], retrieved, analytics_context=analytics_context
         )
-        text = self._generator.generate(messages)
+        text = _plain_text(self._generator.generate(messages))
         return RagAnswer(
             answer=text,
-            citations=_citations(retrieved),
+            citations=_cited(text, retrieved),
             used_chunk_ids=[chunk.chunk_id for chunk in retrieved],
         )
