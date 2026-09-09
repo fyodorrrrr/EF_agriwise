@@ -8,7 +8,7 @@ import { formatValue } from "@/components/forecast/verdict";
 import { MapPageClient } from "@/components/map/MapPageClient";
 import { COMMODITIES, PROVINCES } from "@/lib/domain";
 import { getOutlook } from "@/lib/forecast";
-import { heatColor } from "@/lib/gis/styles";
+import { heatColor, type HeatPalette } from "@/lib/gis/styles";
 import { listMarkets } from "@/lib/markets";
 import { usePreferences } from "@/lib/preferences";
 import type { Commodity, OutlookResponse } from "@/types/forecast";
@@ -21,6 +21,12 @@ const LAYERS: { id: Layer; label: string }[] = [
   { id: "supply", label: "Supply" },
   { id: "opportunity", label: "Opportunity" },
 ];
+
+// Opportunity and Supply have a clear "higher is better" direction (green=high, red=low).
+// Demand proxy has no such direction, so it keeps the neutral amber->red scale.
+function paletteFor(layer: Layer): HeatPalette {
+  return layer === "opportunity" || layer === "supply" ? "goodHigh" : "default";
+}
 
 function metricFor(
   outlook: OutlookResponse,
@@ -166,7 +172,9 @@ export function MappingAnalytics() {
                 <span className="flex items-center gap-2">
                   <span
                     className="inline-block h-3 w-3 rounded-sm border border-[var(--color-divider)]"
-                    style={{ background: heatColor(metric?.value ?? null, min, max) }}
+                    style={{
+                      background: heatColor(metric?.value ?? null, min, max, paletteFor(layer)),
+                    }}
                   />
                   {province}
                 </span>
@@ -194,6 +202,7 @@ export function MappingAnalytics() {
         heatmapUnit={unit}
         heatmapMin={min}
         heatmapMax={max}
+        heatPalette={paletteFor(layer)}
       />
     </div>
   );

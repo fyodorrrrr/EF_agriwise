@@ -27,15 +27,21 @@ import {
   MapContainer,
   Marker,
   Pane,
-  Popup,
   TileLayer,
   Tooltip,
+  useMapEvents,
 } from "react-leaflet";
 
 import { formatValue } from "@/components/forecast/verdict";
 import { featureName, loadGeoJson } from "@/lib/gis/geojson";
 import { normalizePsgcCode } from "@/lib/gis/psgc";
-import { boundaryStyle, heatColor, type BoundaryLevel } from "@/lib/gis/styles";
+import {
+  boundaryStyle,
+  heatColor,
+  heatGradientCss,
+  type BoundaryLevel,
+  type HeatPalette,
+} from "@/lib/gis/styles";
 import type { MarketRecord } from "@/types/markets";
 
 export interface CalabarzonMapProps {
@@ -45,6 +51,7 @@ export interface CalabarzonMapProps {
   heatmapUnit: string | null;
   heatmapMin: number;
   heatmapMax: number;
+  heatPalette: HeatPalette;
 }
 
 type MapFeature = Feature<Geometry, GeoJsonProperties>;
@@ -81,11 +88,13 @@ const MASK_EXTENT: Polygon = {
   ],
 };
 
+// Fully hides everything outside CALABARZON (opaque, matching the app's card
+// surface) rather than dimming it -- only the CALABARZON boundary shows basemap detail.
 const MASK_STYLE = {
   color: "transparent",
   weight: 0,
-  fillColor: "#1e293b",
-  fillOpacity: 0.55,
+  fillColor: "#ffffff",
+  fillOpacity: 1,
 } as const;
 
 type KadiwaMarkerDetails = {
@@ -186,6 +195,13 @@ function useMapResize(mapRef: React.RefObject<LeafletMap | null>) {
   return containerRef;
 }
 
+// Clicking empty map background (not a marker or a boundary polygon) closes the
+// market detail panel, mirroring the outside-pointerdown behavior of FloatingChat.
+function MapBackgroundClickHandler({ onBackgroundClick }: { onBackgroundClick: () => void }) {
+  useMapEvents({ click: onBackgroundClick });
+  return null;
+}
+
 function useBoundary<G extends Geometry = Geometry>(url: string) {
   const [data, setData] = useState<FeatureCollection<G> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -214,6 +230,7 @@ export default function CalabarzonMap({
   heatmapUnit,
   heatmapMin,
   heatmapMax,
+  heatPalette,
 }: CalabarzonMapProps) {
   const region = useBoundary<Polygon | MultiPolygon>(BOUNDARY_FILES.region);
   const province = useBoundary(BOUNDARY_FILES.province);
@@ -222,6 +239,16 @@ export default function CalabarzonMap({
 
   const mapRef = useRef<LeafletMap | null>(null);
   const resizeContainerRef = useMapResize(mapRef);
+  const [selectedMarket, setSelectedMarket] = useState<MarketRecord | null>(null);
+
+  useEffect(() => {
+    if (!selectedMarket) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSelectedMarket(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selectedMarket]);
 
   const provinceStyle = useCallback(
     (feature?: MapFeature): PathOptions => {
@@ -230,11 +257,11 @@ export default function CalabarzonMap({
       return {
         color: "#7c2d12",
         weight: 1.5,
-        fillColor: heatColor(value, heatmapMin, heatmapMax),
+        fillColor: heatColor(value, heatmapMin, heatmapMax, heatPalette),
         fillOpacity: value === null ? 0.35 : 0.68,
       };
     },
-    [heatmapMax, heatmapMin, provinceMetrics],
+    [heatmapMax, heatmapMin, heatPalette, provinceMetrics],
   );
 
   const provinceTooltip = useCallback(
@@ -281,6 +308,7 @@ export default function CalabarzonMap({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
+          <MapBackgroundClickHandler onBackgroundClick={() => setSelectedMarket(null)} />
           {surroundingMask && (
             <GeoJSON data={surroundingMask} style={MASK_STYLE} interactive={false} />
           )}
@@ -322,6 +350,7 @@ export default function CalabarzonMap({
                     position={[market.latitude, market.longitude]}
                     icon={marketIcon()}
                     pane={MARKET_MARKER_PANE}
+                    eventHandlers={{ click: () => setSelectedMarket(market) }}
                   >
                     <Tooltip direction="top" offset={[0, -34]} opacity={1}>
                       <strong>{market.market_name}</strong>
@@ -331,24 +360,6 @@ export default function CalabarzonMap({
                       {market.market_type ?? "Market"} ·{" "}
                       {market.coordinate_confidence.toLowerCase()}-confidence coordinates
                     </Tooltip>
-                    <Popup>
-                      <div className="flex min-w-48 flex-col gap-1 text-sm">
-                        <strong>{market.market_name}</strong>
-                        <span>
-                          {market.municipality}, {market.province}
-                        </span>
-                        <span>{market.market_type ?? "Market"}</span>
-                        <span className="text-muted">
-                          {market.coordinate_confidence.toLowerCase()}-confidence coordinates
-                        </span>
-                        {market.notes && <span className="text-muted">{market.notes}</span>}
-                        {market.source_url && (
-                          <a href={market.source_url} target="_blank" rel="noreferrer">
-                            View source
-                          </a>
-                        )}
-                      </div>
-                    </Popup>
                   </Marker>
                 ))}
               </LayerGroup>
@@ -363,6 +374,7 @@ export default function CalabarzonMap({
                       position={[market.latitude, market.longitude]}
                       icon={kadiwaIcon(details)}
                       pane={MARKET_MARKER_PANE}
+                      eventHandlers={{ click: () => setSelectedMarket(market) }}
                     >
                       <Tooltip direction="top" offset={[0, -16]} opacity={1}>
                         <strong>{market.market_name}</strong>
@@ -371,30 +383,6 @@ export default function CalabarzonMap({
                         <br />
                         {details.label}
                       </Tooltip>
-                      <Popup>
-                        <div className="flex min-w-48 flex-col gap-1 text-sm">
-                          <strong>{market.market_name}</strong>
-                          <span>
-                            {market.municipality}, {market.province}
-                          </span>
-                          <span>{market.market_type ?? details.label}</span>
-                          {market.notes && <span className="text-muted">{market.notes}</span>}
-                          {market.operator && (
-                            <>
-                              <span className="mt-1 font-medium">Operator</span>
-                              <span>{market.operator}</span>
-                            </>
-                          )}
-                          <span className="text-muted">
-                            {market.coordinate_confidence.toLowerCase()}-confidence coordinates
-                          </span>
-                          {market.source_url && (
-                            <a href={market.source_url} target="_blank" rel="noreferrer">
-                              View official source
-                            </a>
-                          )}
-                        </div>
-                      </Popup>
                     </Marker>
                   );
                 })}
@@ -402,34 +390,100 @@ export default function CalabarzonMap({
             </LayersControl.Overlay>
           </LayersControl>
         </MapContainer>
-        <div
-          className="pointer-events-none absolute bottom-3 left-3 z-[1000] max-w-[60%] rounded-md border border-line bg-white/95 p-3 shadow-md sm:bottom-4 sm:left-4 sm:max-w-none sm:min-w-48"
-          aria-label="Heatmap legend"
-        >
-          <div className="text-xs font-semibold text-ink">{heatmapLabel}</div>
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1000] flex flex-col gap-2 sm:inset-x-4 sm:bottom-4 sm:flex-row sm:items-end sm:justify-between">
           <div
-            className="mt-2 h-2 rounded-full"
-            style={{
-              background:
-                "linear-gradient(90deg, #fde68a, #fbbf24, #f97316, #dc2626)",
-            }}
-          />
-          <div className="mt-1 flex justify-between gap-4 text-[11px] text-muted">
-            <span>{formatValue(heatmapMin, heatmapUnit)}</span>
-            <span>{formatValue(heatmapMax, heatmapUnit)}</span>
+            className="pointer-events-none max-w-[60%] rounded-md border border-line bg-white/95 p-3 shadow-md sm:max-w-none sm:min-w-48"
+            aria-label="Heatmap legend"
+          >
+            <div className="text-xs font-semibold text-ink">{heatmapLabel}</div>
+            <div
+              className="mt-2 h-2 rounded-full"
+              style={{ background: heatGradientCss(heatPalette) }}
+            />
+            <div className="mt-1 flex justify-between gap-4 text-[11px] text-muted">
+              <span>{formatValue(heatmapMin, heatmapUnit)}</span>
+              <span>{formatValue(heatmapMax, heatmapUnit)}</span>
+            </div>
+          </div>
+          <div
+            className="pointer-events-none self-start rounded-md border border-line bg-white/95 px-3 py-2 text-xs shadow-md sm:self-auto"
+            aria-label="Market marker legend"
+          >
+            <div className="font-semibold text-ink">Market markers</div>
+            <div className="mt-1 grid grid-cols-[1rem_auto] gap-x-2 gap-y-1 text-muted">
+              <span className="text-center text-base leading-none text-[#334155]">⌂</span><span>Local market</span>
+              <span className="text-center text-base leading-none text-[#217a3a]">▣</span><span>Permanent KADIWA</span>
+              <span className="text-center text-base leading-none text-[#0f7490]">↻</span><span>Recurring KADIWA</span>
+              <span className="text-center text-base leading-none text-[#c76a12]">◆</span><span>Temporary KADIWA</span>
+            </div>
           </div>
         </div>
         <div
-          className="pointer-events-none absolute right-3 bottom-3 z-[1000] rounded-md border border-line bg-white/95 px-3 py-2 text-xs shadow-md sm:right-4 sm:bottom-4"
-          aria-label="Market marker legend"
+          className={`absolute inset-y-0 right-0 z-[1100] w-[320px] max-w-[85%] transform border-l border-line bg-white shadow-lg transition-transform duration-300 ${
+            selectedMarket ? "translate-x-0" : "translate-x-full"
+          }`}
+          role="dialog"
+          aria-label="Market details"
+          aria-hidden={!selectedMarket}
         >
-          <div className="font-semibold text-ink">Market markers</div>
-          <div className="mt-1 grid grid-cols-[1rem_auto] gap-x-2 gap-y-1 text-muted">
-            <span className="text-center text-base leading-none text-[#334155]">⌂</span><span>Local market</span>
-            <span className="text-center text-base leading-none text-[#217a3a]">▣</span><span>Permanent KADIWA</span>
-            <span className="text-center text-base leading-none text-[#0f7490]">↻</span><span>Recurring KADIWA</span>
-            <span className="text-center text-base leading-none text-[#c76a12]">◆</span><span>Temporary KADIWA</span>
-          </div>
+          {selectedMarket && (
+            <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+              <div className="card-head">
+                <div>
+                  <span className="card-kicker">
+                    {isKadiwaMarket(selectedMarket)
+                      ? kadiwaMarkerDetails(selectedMarket.market_type).label
+                      : (selectedMarket.market_type ?? "Market")}
+                  </span>
+                  <p className="card-title">{selectedMarket.market_name}</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-icon"
+                  aria-label="Close market details"
+                  onClick={() => setSelectedMarket(null)}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="card-body flex flex-col gap-2">
+                <span>
+                  {selectedMarket.municipality}, {selectedMarket.province}
+                </span>
+                <span className="text-muted">
+                  {selectedMarket.coordinate_confidence.toLowerCase()}-confidence coordinates
+                </span>
+                {selectedMarket.notes && (
+                  <span className="text-muted">{selectedMarket.notes}</span>
+                )}
+                {selectedMarket.operator && (
+                  <span>
+                    <span className="font-medium text-ink">Operator: </span>
+                    {selectedMarket.operator}
+                  </span>
+                )}
+                {selectedMarket.source_url && (
+                  <a
+                    href={selectedMarket.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-ghost btn-sm self-start text-xs"
+                  >
+                    View source →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
