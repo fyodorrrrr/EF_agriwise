@@ -37,7 +37,7 @@ export function ModelEvidenceClient() {
   const byKey = new Map(components.map((c) => [`${c.commodity}|${c.component}`, c]));
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="page-container-wide flex flex-col gap-4">
       <div className="page-head">
         <div>
           <h1>Model Evidence</h1>
@@ -57,7 +57,7 @@ export function ModelEvidenceClient() {
         COMMODITIES.map((commodity) => (
           <div key={commodity} className="card flex flex-col gap-3">
             <div className="card-title">{commodity}</div>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {COMPONENT_ORDER.map((component) => {
                 const c = byKey.get(`${commodity}|${component}`);
                 if (!c) return null;

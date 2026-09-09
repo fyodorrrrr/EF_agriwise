@@ -1,9 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MORE_ICON, NAV_ITEMS } from "./nav-items";
+
+export const SIDEBAR_STORAGE_KEY = "agriwise.sidebar";
+
+const noopSubscribe = () => () => {};
+
+function readCollapsedPreference() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed";
+  } catch {
+    return false;
+  }
+}
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -14,6 +26,13 @@ const MORE_ITEMS = NAV_ITEMS.filter((i) => i.group === "more");
 
 export function Sidebar() {
   const pathname = usePathname();
+  const isHydrated = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+  const [collapsedOverride, setCollapsedOverride] = useState<boolean | null>(null);
+  const collapsed = collapsedOverride ?? (isHydrated && readCollapsedPreference());
   const [moreOpen, setMoreOpen] = useState(false);
   const [seenPath, setSeenPath] = useState(pathname);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -54,19 +73,56 @@ export function Sidebar() {
 
   const moreActive = MORE_ITEMS.some((i) => isActive(pathname, i.href));
 
+  function toggleCollapsed() {
+    setCollapsedOverride((currentOverride) => {
+      const current = currentOverride ?? (isHydrated && readCollapsedPreference());
+      const next = !current;
+      try {
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? "collapsed" : "expanded");
+      } catch {
+        // Storage can be unavailable; the rail still works for this session.
+      }
+      return next;
+    });
+  }
+
   return (
     <>
-      <div className="sidebar">
+      <div className="sidebar" data-collapsed={collapsed}>
         <Link href="/" className="sidebar-brand" aria-label="AgriWise">
+          {/* eslint-disable-next-line @next/next/no-img-element -- tiny static brand mark */}
           <img className="brand-mark" src="/brand/agriwise-mark.png" alt="" aria-hidden="true" />
-          <span>griwise</span>
+          <span className="sidebar-brand-word">griwise</span>
         </Link>
 
-        <nav className="sidenav" aria-label="Primary">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "Expand navigation" : "Collapse navigation"}
+          onClick={toggleCollapsed}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+
+        <nav className="sidenav" aria-label="Primary" data-collapsed={collapsed}>
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.label}
+              title={collapsed ? item.label : undefined}
               data-group={item.group}
               aria-current={isActive(pathname, item.href) ? "page" : undefined}
               className="sidenav-item"

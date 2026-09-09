@@ -51,7 +51,7 @@ export function MarketsClient() {
   if (!isHydrated) return null;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="page-container flex flex-col gap-4">
       <div className="page-head">
         <div>
           <h1>Curated Markets</h1>
@@ -84,7 +84,9 @@ export function MarketsClient() {
               No curated market with verified coordinates in {data.province} yet.
             </p>
           ) : (
-            data.ranked.map((r) => <MarketCard key={r.market.market_id} ranked={r} />)
+            <div className="grid items-start gap-4 xl:grid-cols-2">
+              {data.ranked.map((r) => <MarketCard key={r.market.market_id} ranked={r} />)}
+            </div>
           )}
 
           <ul className="card text-xs text-muted list-disc pl-5">

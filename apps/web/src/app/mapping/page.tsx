@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Mapping — AgriWise" };
 
 export default function MappingPage() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="page-container-full flex flex-col gap-4">
       <div className="page-head">
         <div>
           <h1>Mapping</h1>
