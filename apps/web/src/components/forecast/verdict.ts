@@ -29,7 +29,7 @@ export function formatValue(value: number, unit: string | null): string {
   const digits = abs >= 100 ? 0 : abs >= 1 ? 1 : 2;
   const rounded = value.toLocaleString(undefined, { maximumFractionDigits: digits });
   if (!unit) return rounded;
-  if (unit.startsWith("index")) return `${rounded}`;
+  if (unit.startsWith("index")) return `${rounded} idx`;
   if (unit === "PHP/kg") return `₱${rounded}/kg`;
   if (unit === "MT") return `${rounded} MT`;
   return `${rounded} ${unit}`;
