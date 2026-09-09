@@ -1,0 +1,79 @@
+family,file,size_mb,columns_sampled
+crops,"Fruit Crops- Area Planted-Harvested, by Region, Province, Quarter, and Semester, 2010-2026.csv",24.88,121.0
+crops,"Fruit Crops- Number of Bearing Trees-Hills-Vines, by Region, Province, Quarter, Semester, 2010-2026.csv",22.56,121.0
+crops,"Fruit Crops- Volume of Production, by Region, Province, Quarter, and Semester, 2010-2026.csv",25.53,121.0
+crops,"Major Crops- Number of Bearing Trees-Hills-Vines, by Region, Quarter, and Semester, 2010-2026.csv",0.22,121.0
+crops,"Palay and Corn- Area Harvested in Hectares by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv",1.7,282.0
+crops,"Palay and Corn- Volume of Production in Metric Tons by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv",1.75,282.0
+crops,Rice and Corn- Monthly Total Stocks Inventory by Sector and by Region.csv,0.02,14.0
+crops,Rice and Corn- Monthly Total Stocks Inventory by Sector.csv,0.05,14.0
+crops,"Seasonally Adjusted Volume of Production of Palay and Corn in Metric Tons, by Quarter, 2016-2026.csv",0.0,45.0
+crops,"Vegetables and Root Crops- Area Planted-Harvested, by Region, Province, Quarter, and Semester, 2010-2026.csv",37.15,121.0
+crops,"Vegetables and Root Crops- Volume of Production, by Region, Province, Quarter, and Semester, 2010-2026.csv",46.04,121.0
+crops,_download_summary.csv,0.0,7.0
+fies_lfs,FIES-LFS-houseHoldMembers.CSV,105.13,51.0
+fies_lfs,FIES-LFS-houseHoldSummary.CSV,135.62,90.0
+fies_lfs,LFS PUF April 2021.csv,29.15,52.0
+fies_lfs,LFS PUF April 2022.csv,28.64,52.0
+fies_lfs,LFS PUF April 2023.CSV,28.2,52.0
+fies_lfs,LFS PUF April 2024.CSV,26.95,51.0
+fies_lfs,LFS PUF April 2025.CSV,26.75,52.0
+fies_lfs,LFS PUF August 2021 - HHMEM.CSV,6.34,44.0
+fies_lfs,LFS PUF August 2022.CSV,5.84,42.0
+fies_lfs,LFS PUF August 2023.CSV,5.75,41.0
+fies_lfs,LFS PUF August 2024.CSV,5.46,40.0
+fies_lfs,LFS PUF August 2025.CSV,5.51,41.0
+fies_lfs,LFS PUF December 2021 - HHMEM.CSV,6.3,44.0
+fies_lfs,LFS PUF December 2022.CSV,5.93,42.0
+fies_lfs,LFS PUF December 2024.CSV,5.36,40.0
+fies_lfs,LFS PUF December 2025.CSV,5.35,41.0
+fies_lfs,LFS PUF February 2021.csv,6.26,43.0
+fies_lfs,LFS PUF February 2022.csv,5.86,41.0
+fies_lfs,LFS PUF February 2023.CSV,6.1,42.0
+fies_lfs,LFS PUF February 2024.CSV,5.61,40.0
+fies_lfs,LFS PUF February 2025.CSV,5.53,41.0
+fies_lfs,LFS PUF January 2021.csv,26.57,49.0
+fies_lfs,LFS PUF January 2023.CSV,28.62,52.0
+fies_lfs,LFS PUF January 2024.CSV,111.41,52.0
+fies_lfs,LFS PUF January 2025.CSV,26.94,52.0
+fies_lfs,LFS PUF July 2021.csv,116.39,52.0
+fies_lfs,LFS PUF July 2022.CSV,28.58,52.0
+fies_lfs,LFS PUF July 2023.CSV,111.7,52.0
+fies_lfs,LFS PUF July 2024.CSV,26.6,51.0
+fies_lfs,LFS PUF June 2021.csv,6.38,44.0
+fies_lfs,LFS PUF June 2022.csv,5.95,42.0
+fies_lfs,LFS PUF June 2023.CSV,5.97,42.0
+fies_lfs,LFS PUF June 2024.CSV,5.42,40.0
+fies_lfs,LFS PUF June 2025.CSV,5.45,41.0
+fies_lfs,LFS PUF March 2021.csv,6.22,43.0
+fies_lfs,LFS PUF March 2022.csv,5.9,41.0
+fies_lfs,LFS PUF March 2023.CSV,5.99,42.0
+fies_lfs,LFS PUF March 2024.CSV,5.55,40.0
+fies_lfs,LFS PUF March 2025.CSV,5.55,41.0
+fies_lfs,LFS PUF May 2021.csv,6.39,44.0
+fies_lfs,LFS PUF May 2022.csv,6.0,42.0
+fies_lfs,LFS PUF May 2023.CSV,5.9,42.0
+fies_lfs,LFS PUF May 2024.CSV,5.5,40.0
+fies_lfs,LFS PUF May 2025.CSV,5.42,41.0
+fies_lfs,LFS PUF November 2021 - HHMEM.CSV,6.33,44.0
+fies_lfs,LFS PUF November 2022.CSV,5.91,42.0
+fies_lfs,LFS PUF November 2023.CSV,5.7,41.0
+fies_lfs,LFS PUF November 2024.CSV,5.49,40.0
+fies_lfs,LFS PUF November 2025.CSV,5.49,41.0
+fies_lfs,LFS PUF October 2021 - HHMEM.CSV,31.17,58.0
+fies_lfs,LFS PUF October 2022.CSV,28.54,52.0
+fies_lfs,LFS PUF October 2023.CSV,27.85,52.0
+fies_lfs,LFS PUF October 2024.CSV,26.84,52.0
+fies_lfs,LFS PUF October 2025.CSV,27.2,52.0
+fies_lfs,LFS PUF September 2021 - HHMEM.CSV,6.38,44.0
+fies_lfs,LFS PUF September 2022.CSV,6.0,42.0
+fies_lfs,LFS PUF September 2023.CSV,5.71,41.0
+fies_lfs,LFS PUF September 2024.CSV,5.47,40.0
+fies_lfs,LFS PUF September 2025.CSV,5.52,41.0
+fies_lfs,fies_lfs.xlsx,0.14,
+fies_lfs,lfs2023.CSV,5.64,41.0
+prices,"Cereals- Farmgate Prices by Geolocation, Commodity, Year and Period.csv",3.44,223.0
+prices,"Condiments- Farmgate Prices by Geolocation, Commodity, Year and Period.csv",6.6,223.0
+prices,"Fruit Vegetables- Farmgate Prices by Geolocation, Commodity, Year and Period.csv",8.2,223.0
+prices,"Fruits- Farmgate Prices by Commodity, by Region and Province, Monthly, 2010-2026.csv",30.71,223.0
+prices,_price_download_summary.csv,0.0,8.0
