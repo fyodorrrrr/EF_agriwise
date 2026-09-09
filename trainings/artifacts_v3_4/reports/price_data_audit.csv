@@ -1,0 +1,5 @@
+commodity,rows_with_grid_keys,nonmissing_price_n,missing_price_pct,zero_price_after_cleaning_n,date_min,date_max,locations
+rice,1020,988,3.1372549019607843,0,2010-01-01,2026-12-01,5
+tomato,1020,798,21.764705882352942,0,2010-01-01,2026-12-01,5
+red_onion,1020,48,95.29411764705881,0,2010-01-01,2026-12-01,5
+banana,1020,990,2.941176470588235,0,2010-01-01,2026-12-01,5
