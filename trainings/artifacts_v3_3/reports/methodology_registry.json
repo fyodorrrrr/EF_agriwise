@@ -1,0 +1,61 @@
+{
+  "version": "3.3",
+  "supply": {
+    "frequency": "quarterly",
+    "target": "PSA volume of production",
+    "auxiliary": [
+      "lagged area planted/harvested",
+      "lagged yield proxy",
+      "lagged farmgate price",
+      "province one-hot"
+    ],
+    "leakage_control": "same-period area and target-derived yield_proxy are excluded from predictors"
+  },
+  "price": {
+    "frequency": "monthly",
+    "target": "PSA farmgate price",
+    "critical_cleaning": "non-positive prices treated as missing",
+    "auxiliary": [
+      "lagged supply",
+      "lagged area",
+      "lagged yield proxy",
+      "province one-hot"
+    ]
+  },
+  "time_series_selection": {
+    "candidate_families": [
+      "seasonal_naive",
+      "HistGradientBoosting",
+      "HistGradientBoosting-poisson",
+      "GradientBoosting-huber",
+      "RandomForest"
+    ],
+    "selection": "dense recent expanding-window rolling origin on pre-holdout training data only",
+    "final_holdout": "most recent 4 quarters for supply; most recent 12 months for price",
+    "stability_summary": "median and 90th-percentile rolling sMAPE; worst fold retained as diagnostic only"
+  },
+  "demand": {
+    "fies_year": "2023 in supplied household-summary file",
+    "targets": {
+      "rice": "BREAD",
+      "tomato": "VEG",
+      "red_onion": "VEG",
+      "banana": "FRUIT"
+    },
+    "aggregation": "survey-weighted using RFACT",
+    "training": "sample_weight=RFACT passed to model.fit(); target and survey weight excluded from predictors",
+    "model_race": "GB vs Huber-GB vs log1p-GB vs XGB vs regularized-XGB vs Poisson-HistGB; selected by 3-fold province+target-quantile stratified CV inside the training partition",
+    "final_holdout": "stratified 25% household holdout reserved until candidate family is selected",
+    "mase_baseline": "province-mean naive (cross-sectional FIES has no time axis)",
+    "verdict_bands": "USABLE_PROXY (weighted R2>=0.45 or WAPE<=30%), INDICATIVE_PROXY (weighted R2>=0.20 or WAPE<=55%), INSUFFICIENT_DATA otherwise",
+    "temporal_proxy": "FIES baseline + LFS economic activity + seasonal affordability; supply seasonality is context only and is not multiplied into demand pressure",
+    "not_claimed": [
+      "physical MT demand",
+      "observed quarterly commodity consumption"
+    ]
+  },
+  "validation": {
+    "supply_price": "rolling-origin model selection on training history + independent chronological final holdout",
+    "demand_household_proxy": "stratified CV model selection + untouched household holdout + province leave-one-out + weighted aggregate error + per-target validation_report.md"
+  }
+}
