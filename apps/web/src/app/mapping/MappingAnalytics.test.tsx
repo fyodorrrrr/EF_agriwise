@@ -3,12 +3,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 
 import { MappingAnalytics } from "@/app/mapping/MappingAnalytics";
 import { AppPreferencesProvider } from "@/lib/preferences";
-import type { OutlookResponse } from "@/types/forecast";
+import type { MunicipalOutlookResponse, OutlookResponse } from "@/types/forecast";
 
 vi.mock("@/lib/forecast", () => ({ getMunicipalOutlook: vi.fn(), getOutlook: vi.fn() }));
 vi.mock("@/lib/markets", () => ({ listMarkets: vi.fn() }));
 vi.mock("@/components/map/MapPageClient", () => ({ MapPageClient: () => null }));
-import { getOutlook } from "@/lib/forecast";
+import { getMunicipalOutlook, getOutlook } from "@/lib/forecast";
 import { listMarkets } from "@/lib/markets";
 
 function outlook(province: string, supplyOk: boolean): OutlookResponse {
@@ -47,6 +47,17 @@ function outlook(province: string, supplyOk: boolean): OutlookResponse {
       breakdown: {},
       weights_used: {},
     },
+  };
+}
+
+function municipalOutlook(province: string): MunicipalOutlookResponse {
+  return {
+    province: province as MunicipalOutlookResponse["province"],
+    commodity: "Rice",
+    methodology: "synthetic_municipal_benchmark_v1",
+    demand_unit: "Synthetic Demand Share (%)",
+    supply_unit: "MT",
+    municipalities: [],
   };
 }
 
@@ -98,5 +109,32 @@ describe("MappingAnalytics", () => {
     );
 
     expect(screen.getByText(/never a municipality forecast/i)).toBeInTheDocument();
+  });
+
+  it("loads one municipal benchmark response per province", async () => {
+    vi.mocked(listMarkets).mockResolvedValue({ markets: [], diagnostics: [] });
+    vi.mocked(getOutlook).mockImplementation((_c, province) =>
+      Promise.resolve(outlook(province, true) as never),
+    );
+    vi.mocked(getMunicipalOutlook).mockImplementation((_c, province) =>
+      Promise.resolve(municipalOutlook(province ?? "Laguna") as never),
+    );
+
+    render(
+      <AppPreferencesProvider>
+        <MappingAnalytics />
+      </AppPreferencesProvider>,
+    );
+
+    await screen.findByText("Batangas");
+    fireEvent.click(screen.getByRole("button", { name: "Municipal" }));
+    await waitFor(() => expect(getMunicipalOutlook).toHaveBeenCalledTimes(5));
+    expect(vi.mocked(getMunicipalOutlook).mock.calls.map(([, province]) => province).sort()).toEqual([
+      "Batangas",
+      "Cavite",
+      "Laguna",
+      "Quezon",
+      "Rizal",
+    ]);
   });
 });

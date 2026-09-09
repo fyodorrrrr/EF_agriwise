@@ -1,16 +1,25 @@
-"""Laguna's synthetic municipal benchmark disaggregated from province outlooks."""
+"""Synthetic municipal benchmark disaggregation beneath province outlooks."""
 
 from __future__ import annotations
 
 import csv
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 from ml.forecasting.forecast_service import ForecastService
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_BENCHMARK_PATH = _REPO_ROOT / "data" / "synthetic_data" / "laguna_municipal_benchmark_v1.csv"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_BENCHMARK_DIR = _PROJECT_ROOT / "data" / "synthetic_data"
+SUPPORTED_MUNICIPAL_BENCHMARKS = {
+    "Batangas": "batangas_municipal_benchmark_v1.csv",
+    "Cavite": "cavite_municipal_benchmark_v1.csv",
+    "Laguna": "laguna_municipal_benchmark_v1.csv",
+    "Quezon": "quezon_municipal_benchmark_v1.csv",
+    "Rizal": "rizal_municipal_benchmark_v1.csv",
+}
+_CANONICAL_PROVINCES = {province.casefold(): province for province in SUPPORTED_MUNICIPAL_BENCHMARKS}
 
 
 @dataclass(frozen=True)
@@ -33,11 +42,21 @@ class MunicipalOutlookPayload:
     municipalities: tuple[dict, ...]
 
 
+def _canonical_province(province: str) -> str:
+    canonical = _CANONICAL_PROVINCES.get(province.strip().casefold())
+    if canonical is None:
+        raise ValueError(f"municipal benchmark is not supported for province {province!r}")
+    return canonical
+
+
 @lru_cache
-def load_laguna_benchmark(
-    path: Path = _BENCHMARK_PATH,
+def load_municipal_benchmark(
+    province: str,
+    benchmark_dir: Path = _BENCHMARK_DIR,
 ) -> dict[str, tuple[MunicipalBenchmark, ...]]:
-    """Load the committed CSV once, keyed by commodity and then PSGC downstream."""
+    """Load one allow-listed province CSV once, keyed by commodity."""
+    canonical_province = _canonical_province(province)
+    path = benchmark_dir / SUPPORTED_MUNICIPAL_BENCHMARKS[canonical_province]
     with path.open(encoding="utf-8-sig", newline="") as source:
         rows = csv.DictReader(source)
         required = {
@@ -63,7 +82,18 @@ def load_laguna_benchmark(
                 opportunity_classification=row["municipal_opportunity_classification_v1"],
             )
             grouped.setdefault(row["commodity"], []).append(benchmark)
-    return {commodity: tuple(records) for commodity, records in grouped.items()}
+
+    result = {commodity: tuple(records) for commodity, records in grouped.items()}
+    for commodity, records in result.items():
+        if len({record.psgc_code for record in records}) != len(records):
+            raise ValueError(f"municipal benchmark has duplicate PSGC codes: {path} ({commodity})")
+        for field_name in ("demand_weight", "supply_weight"):
+            values = [getattr(record, field_name) for record in records]
+            if not all(math.isfinite(value) and value >= 0 for value in values):
+                raise ValueError(f"municipal benchmark has invalid {field_name}: {path} ({commodity})")
+            if not math.isclose(sum(values), 1.0, rel_tol=0, abs_tol=1e-8):
+                raise ValueError(f"municipal benchmark {field_name} must sum to one: {path} ({commodity})")
+    return result
 
 
 def _latest_value(component) -> float | None:
@@ -79,19 +109,14 @@ def _latest_value(component) -> float | None:
 class MunicipalDisaggregationService:
     """Exposes the CSV benchmark beneath the existing province-level forecast."""
 
-    def __init__(self, forecast_service: ForecastService, benchmark_path: Path = _BENCHMARK_PATH):
+    def __init__(self, forecast_service: ForecastService, benchmark_dir: Path = _BENCHMARK_DIR):
         self._forecast_service = forecast_service
-        self._benchmark_path = benchmark_path
+        self._benchmark_dir = benchmark_dir
 
     def outlook(self, commodity: str, province: str) -> MunicipalOutlookPayload:
-        # The MVP deliberately publishes data only for Laguna; other provinces
-        # receive an empty collection rather than fabricated municipal values.
-        records = (
-            load_laguna_benchmark(self._benchmark_path).get(commodity, ())
-            if province == "Laguna"
-            else ()
-        )
-        provincial = self._forecast_service.outlook(commodity, province)
+        canonical_province = _canonical_province(province)
+        records = load_municipal_benchmark(canonical_province, self._benchmark_dir).get(commodity, ())
+        provincial = self._forecast_service.outlook(commodity, canonical_province)
         supply_mt = _latest_value(provincial.supply)
 
         municipalities = tuple(
@@ -111,7 +136,7 @@ class MunicipalDisaggregationService:
             for record in records
         )
         return MunicipalOutlookPayload(
-            province=province,
+            province=canonical_province,
             commodity=commodity,
             methodology="synthetic_municipal_benchmark_v1",
             demand_unit="Synthetic Demand Share (%)",

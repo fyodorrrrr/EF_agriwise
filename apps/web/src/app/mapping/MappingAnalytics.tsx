@@ -12,7 +12,12 @@ import { getMunicipalOutlook, getOutlook } from "@/lib/forecast";
 import { heatColor } from "@/lib/gis/styles";
 import { listMarkets } from "@/lib/markets";
 import { usePreferences } from "@/lib/preferences";
-import type { Commodity, MunicipalOutlookResponse, OutlookResponse } from "@/types/forecast";
+import type {
+  Commodity,
+  MunicipalOutlookResponse,
+  OutlookResponse,
+  Province,
+} from "@/types/forecast";
 import type { MarketRecord } from "@/types/markets";
 
 type Layer = "demand" | "supply" | "opportunity";
@@ -42,7 +47,10 @@ export function MappingAnalytics() {
   const [errorCommodity, setErrorCommodity] = useState<string | null>(null);
   const [markets, setMarkets] = useState<MarketRecord[]>([]);
   const [marketsError, setMarketsError] = useState(false);
-  const [municipalResult, setMunicipalResult] = useState<{ commodity: Commodity; outlook: MunicipalOutlookResponse } | null>(null);
+  const [municipalResult, setMunicipalResult] = useState<{
+    commodity: Commodity;
+    outlooks: Record<Province, MunicipalOutlookResponse>;
+  } | null>(null);
   const [municipalError, setMunicipalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,7 +71,17 @@ export function MappingAnalytics() {
     if (geographicView !== "municipality") return;
     let cancelled = false;
     setMunicipalError(null);
-    getMunicipalOutlook(commodity).then((outlook) => !cancelled && setMunicipalResult({ commodity, outlook })).catch(() => !cancelled && setMunicipalError(commodity));
+    Promise.all(PROVINCES.map((province) => getMunicipalOutlook(commodity, province)))
+      .then((responses) => {
+        if (cancelled) return;
+        setMunicipalResult({
+          commodity,
+          outlooks: Object.fromEntries(
+            PROVINCES.map((province, index) => [province, responses[index]]),
+          ) as Record<Province, MunicipalOutlookResponse>,
+        });
+      })
+      .catch(() => !cancelled && setMunicipalError(commodity));
     return () => { cancelled = true; };
   }, [commodity, geographicView]);
 
@@ -79,23 +97,26 @@ export function MappingAnalytics() {
   const provinceUnit = present[0]?.metric.unit ?? null;
   const provinceMetrics = Object.fromEntries(rows.map(({ province, metric }) => [province, metric?.value ?? null]));
   const layerLabel = LAYERS.find((item) => item.id === layer)?.label ?? layer;
-  const municipalOutlook = municipalResult?.commodity === commodity ? municipalResult.outlook : null;
-  const municipalityMetrics: Record<string, MunicipalMetric> = Object.fromEntries((municipalOutlook?.municipalities ?? []).map((municipality) => {
+  const municipalOutlooks = municipalResult?.commodity === commodity ? municipalResult.outlooks : null;
+  const municipalRecords = municipalOutlooks
+    ? PROVINCES.flatMap((province) => municipalOutlooks[province].municipalities)
+    : [];
+  const municipalityMetrics: Record<string, MunicipalMetric> = Object.fromEntries(municipalRecords.map((municipality) => {
     if (layer === "demand") return [municipality.psgc_code, { value: municipality.demand_value, unit: "%", label: "Synthetic Demand Share" }];
-    if (layer === "supply") return [municipality.psgc_code, { value: municipality.supply_mt, unit: municipalOutlook?.supply_unit ?? "MT", label: "Synthetic Municipal Supply" }];
+    if (layer === "supply") return [municipality.psgc_code, { value: municipality.supply_mt, unit: "MT", label: "Synthetic Municipal Supply" }];
     return [municipality.psgc_code, { value: municipality.opportunity_score, unit: "/ 100", label: "Municipal Opportunity", classification: municipality.opportunity_classification }];
   }));
   const municipalValues = Object.values(municipalityMetrics).map((metric) => metric.value).filter((value): value is number => value !== null && Number.isFinite(value));
   const municipalMin = municipalValues.length ? Math.min(...municipalValues) : 0;
   const municipalMax = municipalValues.length ? Math.max(...municipalValues) : 0;
-  const municipalUnit = layer === "demand" ? "%" : layer === "supply" ? municipalOutlook?.supply_unit ?? "MT" : "/ 100";
+  const municipalUnit = layer === "demand" ? "%" : layer === "supply" ? "MT" : "/ 100";
   const heatmapLabel = geographicView === "municipality" ? `${commodity} · ${layer === "demand" ? "Synthetic Demand Share" : layerLabel}` : `${commodity} · ${layerLabel}`;
 
   return <div className="flex flex-col gap-4">
     <div className="card flex flex-col gap-3">
       <div className="card-head"><div>
         <span className="card-kicker">{geographicView === "province" ? "Province heatmap" : "Municipal heatmap"}</span>
-        <p className="text-xs text-muted">{geographicView === "province" ? "Relative province-level values for the selected layer. A municipality on the map resolves to its province—this is never a municipality forecast." : "Laguna-only MVP synthetic municipal benchmark. Other CALABARZON municipalities remain no-data."}</p>
+        <p className="text-xs text-muted">{geographicView === "province" ? "Relative province-level values for the selected layer. A municipality on the map resolves to its province—this is never a municipality forecast." : "Synthetic municipal benchmarks for CALABARZON. Municipalities without a benchmark remain no-data."}</p>
       </div><div className="flex w-full flex-col gap-1 sm:w-auto sm:items-end">
         <select aria-label="Commodity" className="select" value={commodity} onChange={(event) => setOverride(event.target.value as Commodity)}>{COMMODITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select>
         <span className="text-xs text-muted">{markets.length} mapped {markets.length === 1 ? "market" : "markets"}</span>
