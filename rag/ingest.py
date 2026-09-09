@@ -40,6 +40,22 @@ DOC_TITLES: dict[str, str] = {
 # citation points at a named section rather than the whole file.
 _MD_SECTION = re.compile(r"\n(?=## )")
 
+# The pre-consolidated corpus file: one `# AGRI-NNN - Title` block per source
+# document, each holding `### PDF Page N` sub-sections with real page numbers.
+_AGRI_CORPUS_STEM = "AgriWise_Agriculture_RAG_Corpus"
+_AGRI_DOC = re.compile(r"^# (AGRI-\d+) - (.+?)\s*$", re.MULTILINE)
+_AGRI_PAGE = re.compile(r"^### PDF Page (\d+)\s*$", re.MULTILINE)
+_AGRI_LOCATOR = re.compile(r"^> RAG locator:.*$", re.MULTILINE)
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+
+# Only the farmer-facing documents. The extension-bureaucracy sources in the
+# corpus (ATI corporate plan / performance indicators, grant system, PAFES,
+# PAP4FF policy, RBME M&E) are skipped.
+_AGRI_KEEP = {
+    "AGRI-003", "AGRI-004", "AGRI-005", "AGRI-006", "AGRI-007", "AGRI-008",
+    "AGRI-009", "AGRI-012", "AGRI-014", "AGRI-015", "AGRI-017",
+}
+
 _HYPHEN_BREAK = re.compile(r"(\w)-\n(\w)")
 _INLINE_WS = re.compile(r"[ \t]+")
 _MANY_NEWLINES = re.compile(r"\n{3,}")
@@ -75,10 +91,39 @@ def _markdown_pages(path: Path, doc_id: str, title: str) -> list[PageText]:
     ]
 
 
+def _agri_corpus_pages(path: Path) -> list[PageText]:
+    raw = path.read_text(encoding="utf-8")
+    docs = list(_AGRI_DOC.finditer(raw))
+    pages: list[PageText] = []
+    for k, header in enumerate(docs):
+        source_id, title = header.group(1), header.group(2).strip()
+        if source_id not in _AGRI_KEEP:
+            continue
+        seg_end = docs[k + 1].start() if k + 1 < len(docs) else len(raw)
+        marker = raw.find("## Document Text", header.end(), seg_end)
+        if marker == -1:
+            continue
+        body = raw[marker + len("## Document Text") : seg_end]
+        marks = list(_AGRI_PAGE.finditer(body))
+        for j, mark in enumerate(marks):
+            page_no = int(mark.group(1))
+            end = marks[j + 1].start() if j + 1 < len(marks) else len(body)
+            text = body[mark.end() : end]
+            text = _AGRI_LOCATOR.sub("", text)
+            text = _HTML_COMMENT.sub("", text).strip()
+            if text:
+                pages.append(
+                    PageText(doc_id=source_id, doc_title=title, page_number=page_no, text=text)
+                )
+    return pages
+
+
 def extract_pages(path: Path) -> list[PageText]:
     doc_id = path.stem
     title = DOC_TITLES.get(doc_id, doc_id)
 
+    if doc_id == _AGRI_CORPUS_STEM:
+        return _agri_corpus_pages(path)
     if path.suffix.lower() in {".md", ".markdown"}:
         return _markdown_pages(path, doc_id, title)
 
@@ -147,24 +192,41 @@ def ingest(
 
     for path in paths:
         prepared = prepare_pages(extract_pages(path))
-        chunks = chunk_pages(prepared, chunk_size=cfg.chunk_size, chunk_overlap=cfg.chunk_overlap)
-        if not chunks:
-            continue
-        store.upsert(
-            ids=[c.chunk_id for c in chunks],
-            embeddings=embedder.embed([c.text for c in chunks]),
-            documents=[c.text for c in chunks],
-            metadatas=[
-                {
-                    "doc_id": c.doc_id,
-                    "doc_title": c.doc_title,
-                    "page_start": c.page_start,
-                    "page_end": c.page_end,
-                }
-                for c in chunks
-            ],
-        )
-        manifest["documents"][path.stem] = {"chunks": len(chunks), "sha256": _sha256(path)}
+
+        # A file may carry several logical documents (the consolidated corpus);
+        # chunk each separately so every chunk keeps its own doc_id / title.
+        by_doc: dict[str, list[PageText]] = {}
+        for page in prepared:
+            by_doc.setdefault(page.doc_id, []).append(page)
+
+        file_chunks = 0
+        for doc_pages in by_doc.values():
+            chunks = chunk_pages(
+                doc_pages, chunk_size=cfg.chunk_size, chunk_overlap=cfg.chunk_overlap
+            )
+            if not chunks:
+                continue
+            store.upsert(
+                ids=[c.chunk_id for c in chunks],
+                embeddings=embedder.embed([c.text for c in chunks]),
+                documents=[c.text for c in chunks],
+                metadatas=[
+                    {
+                        "doc_id": c.doc_id,
+                        "doc_title": c.doc_title,
+                        "page_start": c.page_start,
+                        "page_end": c.page_end,
+                    }
+                    for c in chunks
+                ],
+            )
+            file_chunks += len(chunks)
+
+        if file_chunks:
+            manifest["documents"][path.stem] = {
+                "chunks": file_chunks,
+                "sha256": _sha256(path),
+            }
 
     (cfg.index_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
