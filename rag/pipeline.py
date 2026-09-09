@@ -8,6 +8,34 @@ from rag.prompt import ChatTurn, build_messages
 from rag.retriever import RetrievedChunk
 
 
+OUT_OF_SCOPE_ANSWER = (
+    "I can only answer questions about the DA farm-business and good-agricultural-practice "
+    "manuals for CALABARZON, plus the AgriWise analytics. Try asking about farm records, "
+    "GAP requirements, crop planning, or commodity prices."
+)
+
+_SMALLTALK = {
+    "hi", "hello", "hey", "yo", "hiya", "howdy", "hello there",
+    "kumusta", "kamusta", "kumusta ka", "kamusta ka", "kamusta po", "kumusta po",
+    "good morning", "good afternoon", "good evening",
+    "magandang umaga", "magandang hapon", "magandang gabi",
+    "thanks", "thank you", "thanks!", "salamat", "maraming salamat", "salamat po",
+    "help", "what can you do", "what do you do", "who are you", "what are you",
+    "what is this", "ano ito", "ano ka", "anong kaya mo",
+}
+_SMALLTALK_PREFIXES = ("hi", "hello", "hey", "kumusta", "kamusta", "salamat", "thanks")
+
+
+def _is_smalltalk(question: str) -> bool:
+    """Greetings / thanks / 'what can you do' — these retrieve nothing but should still
+    get a warm reply from the model rather than the out-of-scope canned line."""
+    q = question.strip().lower().rstrip("?!. ")
+    if q in _SMALLTALK:
+        return True
+    first = q.split(" ", 1)[0]
+    return len(q) <= 16 and first in _SMALLTALK_PREFIXES
+
+
 class Citation(BaseModel):
     doc_id: str
     doc_title: str
@@ -75,7 +103,15 @@ class RagPipeline:
     ) -> RagAnswer:
         if self._generator is None:
             raise RagGenerationError("generation unavailable: GROQ_API_KEY not configured")
-        retrieved = self._retriever.retrieve(question)
+
+        smalltalk = _is_smalltalk(question)
+        retrieved = [] if smalltalk else self._retriever.retrieve(question)
+
+        # Nothing relevant and not a greeting → out of scope. Answer deterministically
+        # without spending a generation call (also blocks code/homework/injection asks).
+        if not smalltalk and not retrieved:
+            return RagAnswer(answer=OUT_OF_SCOPE_ANSWER, citations=[], used_chunk_ids=[])
+
         messages = build_messages(
             question, history or [], retrieved, analytics_context=analytics_context
         )

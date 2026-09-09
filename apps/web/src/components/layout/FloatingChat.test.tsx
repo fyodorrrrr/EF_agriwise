@@ -37,6 +37,24 @@ describe("FloatingChat", () => {
     expect(screen.getByTestId("chat-panel")).toHaveAttribute("hidden");
   });
 
+  it("shows the assistant identity in the panel header", () => {
+    renderFab();
+    expect(screen.getByText("AgriWise")).toBeInTheDocument();
+    expect(screen.getByText("DA farm-business & GAP manuals")).toBeInTheDocument();
+  });
+
+  it("shows a typing indicator while a question is pending", async () => {
+    let resolve!: (value: unknown) => void;
+    vi.mocked(askAgriWise).mockReturnValue(new Promise((r) => (resolve = r)) as never);
+    renderFab();
+    fireEvent.click(screen.getByRole("button", { name: "Ask AgriWise" }));
+    ask("when do I plant?");
+
+    expect(await screen.findByRole("status", { name: "Thinking" })).toBeInTheDocument();
+    resolve({ answer: "Now.", citations: [], analytics_context_used: false });
+    await waitFor(() => expect(screen.getByText("Now.")).toBeInTheDocument());
+  });
+
   it("opens the panel and focuses the input when the bubble is clicked", async () => {
     renderFab();
     fireEvent.click(screen.getByRole("button", { name: "Ask AgriWise" }));
