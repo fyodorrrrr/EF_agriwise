@@ -22,6 +22,7 @@ const RANKING: MarketRankingResponse = {
         latitude: 14.35,
         longitude: 121.08,
         market_type: "Public Market",
+        operator: null,
         coordinate_confidence: "HIGH",
         source_url: null,
         notes: null,

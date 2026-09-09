@@ -68,6 +68,7 @@ describe("MappingAnalytics", () => {
           latitude: 14.33,
           longitude: 121.08,
           market_type: "Public Market",
+          operator: null,
           coordinate_confidence: "HIGH",
           source_url: null,
           notes: null,

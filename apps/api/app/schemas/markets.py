@@ -15,6 +15,7 @@ class MarketRecord(BaseModel):
     latitude: float
     longitude: float
     market_type: str | None = None
+    operator: str | None = None
     coordinate_confidence: str
     source_url: str | None = None
     notes: str | None = None
