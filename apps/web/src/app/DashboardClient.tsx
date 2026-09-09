@@ -9,28 +9,50 @@ import { COMMODITIES } from "@/lib/domain";
 import { getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
 import type { Commodity, OutlookResponse } from "@/types/forecast";
-import { formatQuarter, formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
+import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Sparkline } from "@/components/forecast/Sparkline";
-import { GlossaryPanel } from "@/components/forecast/GlossaryPanel";
-import {
-  METRIC_INFO,
-  OPPORTUNITY_SCORE_EXPLAINER,
-  NO_SUPPLY_DEMAND_RATIO,
-  classificationLabel,
-  classificationMeaning,
-} from "@/components/forecast/glossary";
-import { InfoTip } from "@/components/ui/InfoTip";
+import { classificationLabel } from "@/components/forecast/glossary";
 
 type Row = { commodity: Commodity; outlook: OutlookResponse };
 type Status = "idle" | "loading" | "ready" | "error";
+
+const DASHBOARD_METRIC_LABELS = {
+  demand: "Estimated demand",
+  supply: "Available supply",
+  price: "Farmgate price",
+} as const;
+
+const DASHBOARD_CLASSIFICATION_LABELS: Record<string, string> = {
+  HIGH_OPPORTUNITY: "Strong opportunity",
+  UNDERSUPPLY_LEANING: "Supply may be limited",
+  BALANCED: "Balanced conditions",
+  OVERSUPPLY_LEANING: "More supply likely",
+  SEVERE_OVERSUPPLY: "Much more supply likely",
+};
+
+function dashboardClassificationLabel(classification: string | null): string {
+  if (!classification) return "Result unavailable";
+  return DASHBOARD_CLASSIFICATION_LABELS[classification] ?? classificationLabel(classification);
+}
+
+function dashboardQuarter(iso: string): string {
+  const [year, month] = iso.split("-").map(Number);
+  return `Quarter ${Math.floor((month - 1) / 3) + 1}, ${year}`;
+}
 
 function componentSummary(outlook: OutlookResponse, kind: "demand" | "supply" | "price") {
   const c = outlook[kind];
   if (c.verdict === "INSUFFICIENT_DATA") return "—";
   const series = c.forecast?.length ? c.forecast : c.observed ?? [];
   const value = series.length ? series[series.length - 1].value : null;
-  return value === null ? "—" : formatValue(value, c.unit);
+  if (value === null) return "—";
+
+  const formatted = formatValue(value, null);
+  if (c.unit?.startsWith("index")) return `${formatted} demand index`;
+  if (c.unit === "MT") return `${formatted} metric tons`;
+  if (c.unit === "PHP/kg") return `${formatted} pesos per kilogram`;
+  return c.unit ? `${formatted} ${c.unit}` : formatted;
 }
 
 function computeKpis(rows: Row[]) {
@@ -105,8 +127,6 @@ export function DashboardClient() {
         <ProvinceSelect value={province} onChange={setProvince} />
       </div>
 
-      <GlossaryPanel />
-
       {!province && <p className="state">Choose a province above to see its outlook.</p>}
 
       {status === "loading" && <BrandLoader label="Loading outlook…" />}
@@ -132,12 +152,12 @@ export function DashboardClient() {
               value={best ? best.commodity : "—"}
               sublabel={
                 best?.outlook.opportunity.classification
-                  ? classificationLabel(best.outlook.opportunity.classification)
+                  ? dashboardClassificationLabel(best.outlook.opportunity.classification)
                   : undefined
               }
             />
             <KpiCard
-              label="Avg opportunity score"
+              label="Average opportunity score"
               value={avgScore === null ? "—" : avgScore.toFixed(0)}
             />
           </div>
@@ -158,14 +178,9 @@ export function DashboardClient() {
                       Opportunity: {verdictLabel("INSUFFICIENT_DATA")}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="badge badge-accent">
-                        {classificationLabel(opp.classification)} · {opp.score}
-                      </span>
-                      <InfoTip label="What does this score mean?">
-                        {OPPORTUNITY_SCORE_EXPLAINER} {classificationMeaning(opp.classification)}{" "}
-                        {NO_SUPPLY_DEMAND_RATIO}
-                      </InfoTip>
+                    <span className="badge badge-accent">
+                      {dashboardClassificationLabel(opp.classification)} ·{" "}
+                      {Math.round(opp.score ?? 0)}
                     </span>
                   )}
                 </div>
@@ -177,13 +192,7 @@ export function DashboardClient() {
                     key={kind}
                     className="flex items-center justify-between gap-3 sm:flex-col sm:items-start sm:gap-1"
                   >
-                    <span className="inline-flex items-center gap-1">
-                      <span className="card-kicker">{METRIC_INFO[kind].label}</span>
-                      <InfoTip label={`What is ${METRIC_INFO[kind].label}?`}>
-                        {METRIC_INFO[kind].whatItMeans}
-                        {METRIC_INFO[kind].unitNote ? ` ${METRIC_INFO[kind].unitNote}` : ""}
-                      </InfoTip>
-                    </span>
+                    <span className="card-kicker">{DASHBOARD_METRIC_LABELS[kind]}</span>
                     <span className="flex items-center gap-2 sm:mt-1 sm:flex-col sm:items-start sm:gap-1">
                       <span className="text-md font-semibold">
                         {componentSummary(outlook, kind)}
@@ -196,18 +205,20 @@ export function DashboardClient() {
                 ))}
               </div>
 
-              <div className="card-foot flex items-center justify-between text-xs text-muted">
-                <span>
-                  {opp.shared_quarter
-                    ? `Opportunity quarter: ${formatQuarter(opp.shared_quarter)}`
-                    : "Opportunity unavailable"}
-                </span>
-                <Link
-                  href={`/forecasting?commodity=${encodeURIComponent(commodity)}`}
-                  className="btn btn-ghost btn-sm"
-                >
-                  Details →
-                </Link>
+              <div className="card-foot flex flex-col gap-3 text-xs text-muted">
+                <div className="flex items-center justify-between">
+                  <span>
+                    {opp.shared_quarter
+                      ? `Data period: ${dashboardQuarter(opp.shared_quarter)}`
+                      : "Opportunity unavailable"}
+                  </span>
+                  <Link
+                    href={`/forecasting?commodity=${encodeURIComponent(commodity)}`}
+                    className="btn btn-ghost btn-sm"
+                  >
+                    Details →
+                  </Link>
+                </div>
               </div>
             </div>
           );

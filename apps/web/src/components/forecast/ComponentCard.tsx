@@ -1,8 +1,7 @@
 import type { OutlookComponent } from "@/types/forecast";
 import { Sparkline } from "@/components/forecast/Sparkline";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
-import { METRIC_INFO, VERDICT_MEANING } from "@/components/forecast/glossary";
-import { InfoTip } from "@/components/ui/InfoTip";
+import { METRIC_INFO, confidenceLabel } from "@/components/forecast/glossary";
 
 function latest(component: OutlookComponent): number | null {
   const series = component.forecast?.length
@@ -30,22 +29,13 @@ export function ComponentCard({
     <div className="card flex flex-col gap-2">
       <div className="card-head">
         <div>
-          <span className="inline-flex items-center gap-1">
-            <span className="card-kicker">{info.label}</span>
-            <InfoTip label={`What is ${info.label}?`}>
-              {info.whatItMeans}
-              {info.unitNote ? ` ${info.unitNote}` : ""}
-            </InfoTip>
-          </span>
+          <span className="card-kicker">{info.label}</span>
           {detailed && component.label && (
             <p className="text-xs text-muted">{component.label}</p>
           )}
         </div>
-        <span className="inline-flex items-center gap-1">
-          <span className={verdictBadgeClass(component.verdict)}>
-            {verdictLabel(component.verdict)}
-          </span>
-          <InfoTip label="What does this badge mean?">{VERDICT_MEANING[component.verdict]}</InfoTip>
+        <span className={verdictBadgeClass(component.verdict)}>
+          {verdictLabel(component.verdict)}
         </span>
       </div>
 
@@ -72,7 +62,7 @@ export function ComponentCard({
             {component.confidence && (
               <>
                 <dt>Confidence</dt>
-                <dd className="text-right">{component.confidence}</dd>
+                <dd className="text-right">{confidenceLabel(component.confidence)}</dd>
               </>
             )}
             {component.source && (

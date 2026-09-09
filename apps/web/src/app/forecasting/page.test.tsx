@@ -108,7 +108,7 @@ describe("ForecastingClient", () => {
     );
     vi.mocked(getOutlook).mockResolvedValue(OUTLOOK as never);
 
-    renderForecasting();
+    const { container } = renderForecasting();
 
     await waitFor(() =>
       expect(screen.getByText("Estimated Demand Proxy")).toBeInTheDocument(),
@@ -116,11 +116,13 @@ describe("ForecastingClient", () => {
     expect(screen.getByText("learned_model:hist_gradient_boosting")).toBeInTheDocument();
     expect(screen.getByText(/not a municipality forecast/i)).toBeInTheDocument();
     // opportunity
-    expect(screen.getByText("55.4")).toBeInTheDocument();
-    expect(screen.getByText("demand pressure index")).toBeInTheDocument();
+    expect(screen.getByText("55 out of 100")).toBeInTheDocument();
+    expect(screen.getByText("Forecast reliability")).toBeInTheDocument();
     // explainability — one "Why this result?" per component + opportunity
     expect(screen.getAllByText("Why this result?").length).toBe(4);
     expect(await screen.findByText("Methodology")).toBeInTheDocument();
+    expect(screen.queryByText("What do these numbers mean?")).not.toBeInTheDocument();
+    expect(container.querySelector(".info-tip")).toBeNull();
   });
 
   it("lets the user pick a forecast horizon of 2, 3, or 4 quarters", async () => {

@@ -71,7 +71,7 @@ describe("MarketsClient", () => {
     await waitFor(() =>
       expect(screen.getByText("Biñan Public Market")).toBeInTheDocument(),
     );
-    expect(screen.getByText("71.2")).toBeInTheDocument();
+    expect(screen.getByText("71.2 out of 100")).toBeInTheDocument();
     expect(screen.getByText(/3\/3 analytics components available/i)).toBeInTheDocument();
     expect(screen.getByText("Why recommended?")).toBeInTheDocument();
     // caveat appears in the intro copy and again as a policy bullet
