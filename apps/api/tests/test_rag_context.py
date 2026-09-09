@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from app.rag_context import build_analytics_context, build_full_grid_context
+from app.rag_context import (
+    build_analytics_context,
+    build_full_grid_context,
+    build_markets_context,
+)
 from ml.forecasting.artifact_registry import ArtifactRegistry
 from ml.forecasting.forecast_service import ForecastService
 
@@ -15,6 +19,15 @@ def _service() -> ForecastService:
     if not (_ARTIFACTS / "prepared").is_dir():
         pytest.skip("committed artifact bundle not present")
     return ForecastService(ArtifactRegistry.load(_ARTIFACTS))
+
+
+def _registry():
+    from markets.registry import MarketRegistry
+
+    reg = MarketRegistry.load(_ARTIFACTS)
+    if not reg.for_province("Laguna"):
+        pytest.skip("market coordinates not present")
+    return reg
 
 
 def test_returns_none_for_missing_or_bogus_selectors():
@@ -38,6 +51,20 @@ def test_rice_context_labels_demand_as_a_proxy_index_and_names_the_source():
     import re
 
     assert re.search(r"forecast by period \[[^\]]*Q\d \d{4}[^\]]*Q\d \d{4}", ctx)
+
+
+def test_markets_context_ranks_province_markets():
+    ctx = build_markets_context(_registry(), _service(), "Laguna", "Tomato")
+    assert ctx is not None
+    assert "Top markets for Laguna" in ctx
+    assert "straight-line" in ctx
+    assert ctx.count("\n- ") >= 3  # at least a few ranked markets
+
+
+def test_markets_context_none_without_province_or_registry():
+    assert build_markets_context(_registry(), _service(), None) is None
+    assert build_markets_context(_registry(), _service(), "Atlantis") is None
+    assert build_markets_context(None, _service(), "Laguna") is None
 
 
 def test_full_grid_context_has_a_row_for_every_commodity_province_pair():

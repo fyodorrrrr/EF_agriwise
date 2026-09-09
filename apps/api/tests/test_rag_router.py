@@ -61,8 +61,8 @@ def test_query_injects_resolved_analytics_context_from_selectors():
     if not body["analytics_context_used"]:
         pytest.skip("forecast artifacts not present in this checkout")
     ctx = pipeline.last_analytics_context
-    assert "Rice in Laguna province" in ctx  # focused block
-    assert "Full CALABARZON analytics grid" in ctx  # plus the whole grid
+    assert "Rice in Laguna province" in ctx  # focused block for the named pair
+    assert "Full CALABARZON analytics grid" not in ctx  # no grid when the pair is known
     # Fully bogus selectors and no analytics intent → no analytics context.
     resp2 = client.post(
         "/rag/query", json={"question": "q", "commodity": "Gold", "province": "Atlantis"}
@@ -161,6 +161,25 @@ def test_query_no_analytics_for_a_pure_manual_question():
     body = resp.json()
     assert body["analytics_context_used"] is False
     assert body["analytics_scope"] is None
+
+
+def test_query_adds_market_ranking_for_a_where_to_sell_question():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(answer="ok", citations=[], used_chunk_ids=[])
+    )
+    client = _client(pipeline)
+
+    resp = client.post(
+        "/rag/query",
+        json={"question": "I am in Laguna, which markets are best for selling tomatoes"},
+    )
+    body = resp.json()
+    if not body["analytics_context_used"]:
+        pytest.skip("forecast/market artifacts not present in this checkout")
+    assert body["analytics_scope"] == "Laguna markets · Tomato"
+    ctx = pipeline.last_analytics_context
+    assert "Top markets for Laguna" in ctx
+    assert "Tomato in Laguna province" in ctx  # price outlook alongside
 
 
 def test_query_validation_error_is_422():

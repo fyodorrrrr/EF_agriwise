@@ -37,6 +37,13 @@ _OVERVIEW_TRIGGERS: tuple[str, ...] = (
     "selling", "season", "invest", "dashboard",
 )
 
+# Question is about where to sell / which market — attach the market ranking.
+_MARKET_TRIGGERS: tuple[str, ...] = (
+    "market", "markets", "sell", "selling", "sold", "buyer", "buyers",
+    "where to sell", "palengke", "bagsakan", "talipapa", "trading post",
+    "wholesale", "wholesaler", "bentahan", "pamilihan",
+)
+
 
 def _mentions(text: str, aliases: tuple[str, ...]) -> bool:
     return any(re.search(rf"\b{re.escape(alias)}\b", text) for alias in aliases)
@@ -57,3 +64,8 @@ def extract_entities(text: str) -> tuple[str | None, str | None]:
 def wants_overview(text: str) -> bool:
     low = (text or "").lower()
     return any(trigger in low for trigger in _OVERVIEW_TRIGGERS)
+
+
+def wants_markets(text: str) -> bool:
+    low = (text or "").lower()
+    return any(trigger in low for trigger in _MARKET_TRIGGERS)
