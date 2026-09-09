@@ -1,0 +1,26 @@
+{
+  "rice": {
+    "artifact": "demand/rice.joblib",
+    "target": "BREAD",
+    "label": "Cereal Household Demand Proxy",
+    "commodity_specificity": "category_proxy"
+  },
+  "tomato": {
+    "artifact": "demand/vegetable_shared.joblib",
+    "target": "VEG",
+    "label": "Vegetable Household Demand Proxy",
+    "commodity_specificity": "shared_broad_category"
+  },
+  "red_onion": {
+    "artifact": "demand/vegetable_shared.joblib",
+    "target": "VEG",
+    "label": "Vegetable Household Demand Proxy",
+    "commodity_specificity": "shared_broad_category"
+  },
+  "banana": {
+    "artifact": "demand/banana.joblib",
+    "target": "FRUIT",
+    "label": "Fruit Household Demand Proxy",
+    "commodity_specificity": "category_proxy"
+  }
+}

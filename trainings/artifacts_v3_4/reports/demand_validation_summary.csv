@@ -1,0 +1,4 @@
+target,artifact_name,selected_model,weighted_R2,unweighted_R2,WAPE,sMAPE,MASE,weighted_aggregate_error_pct,verdict,verdict_reason
+BREAD,rice,XGBRegressor__t1,0.5370455841764072,0.5475114437330562,23.236209856820857,23.76564338119225,0.65389284548599,-0.12161341281933749,USABLE_PROXY,weighted R2 and/or WAPE meet the usable-proxy bar
+VEG,vegetable_shared,GradientBoostingRegressor__t1,0.1971960597154282,0.20045803208690005,43.29131989896406,43.849264727044925,0.8590990988695612,-1.306430817727919,INDICATIVE_PROXY,"weak explanatory power; use for relative/directional signal, not precise point forecasts"
+FRUIT,banana,HistGradientBoostingRegressor_poisson__t1,0.2536859302528015,0.27847572120483965,49.730539279626505,51.32001944741863,0.8135291774237798,4.602382959159472,INDICATIVE_PROXY,"weak explanatory power; use for relative/directional signal, not precise point forecasts"

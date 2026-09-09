@@ -1,0 +1,45 @@
+{
+  "version": "3.2",
+  "supply": {
+    "frequency": "quarterly",
+    "target": "PSA volume of production",
+    "auxiliary": [
+      "area planted/harvested",
+      "yield proxy",
+      "lagged farmgate price"
+    ]
+  },
+  "price": {
+    "frequency": "monthly",
+    "target": "PSA farmgate price",
+    "critical_cleaning": "non-positive prices treated as missing",
+    "auxiliary": [
+      "lagged supply",
+      "lagged area",
+      "lagged yield proxy"
+    ]
+  },
+  "demand": {
+    "fies_year": "2023 in supplied household-summary file",
+    "targets": {
+      "rice": "BREAD",
+      "tomato": "VEG",
+      "red_onion": "VEG",
+      "banana": "FRUIT"
+    },
+    "aggregation": "survey-weighted using RFACT",
+    "training": "sample_weight=RFACT passed directly into model.fit(), matching EF_agriwise/ml/demand/pipeline's FIES/XGBoost reference pattern",
+    "model_race": "GradientBoostingRegressor vs XGBRegressor (ross'_work reference hyperparameters) selected per target by weighted R2, tie-break on WAPE; a light regularized-variant sweep is attempted only when the winner is still below the usable-proxy band",
+    "mase_baseline": "province-mean naive (no time axis exists in cross-sectional FIES 2023, so this replaces the seasonal-lag naive used for supply/price)",
+    "verdict_bands": "USABLE_PROXY (weighted R2>=0.45 or WAPE<=30%), INDICATIVE_PROXY (weighted R2>=0.20 or WAPE<=55%), INSUFFICIENT_DATA otherwise",
+    "temporal_proxy": "FIES baseline + LFS economic activity + seasonal price/supply indices",
+    "not_claimed": [
+      "physical MT demand",
+      "observed quarterly commodity consumption"
+    ]
+  },
+  "validation": {
+    "supply_price": "chronological holdout + rolling origin",
+    "demand_household_proxy": "household holdout + province leave-one-out + weighted aggregate error + per-target validation_report.md"
+  }
+}
