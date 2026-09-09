@@ -1,5 +1,4 @@
 import type { OutlookComponent } from "@/types/forecast";
-import { Sparkline } from "@/components/forecast/Sparkline";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { METRIC_INFO, confidenceLabel } from "@/components/forecast/glossary";
 
@@ -12,6 +11,13 @@ function latest(component: OutlookComponent): number | null {
   return series ? series[series.length - 1].value : null;
 }
 
+/**
+ * A compact fact strip above the metric's chart — verdict, one plain-
+ * language value, and the confidence/source/data-as-of detail. It no
+ * longer carries its own trend line: the big chart directly below shows
+ * the same series at real size, so a second mini-chart here would be
+ * redundant chrome.
+ */
 export function ComponentCard({
   kind,
   component,
@@ -26,7 +32,7 @@ export function ComponentCard({
   const info = METRIC_INFO[kind];
 
   return (
-    <div className="card flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="card-head">
         <div>
           <span className="card-kicker">{info.label}</span>
@@ -45,42 +51,39 @@ export function ComponentCard({
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
-            <div className="min-w-0">
-              <div className="text-xl font-bold">
-                {value === null ? "—" : formatValue(value, component.unit)}
-              </div>
-              <p className="text-xs text-muted">
-                {component.forecast?.length ? "forecast" : "latest observed"}
-                {component.frequency ? ` · ${component.frequency}` : ""}
-              </p>
-            </div>
-            <Sparkline observed={component.observed} forecast={component.forecast} />
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-xl font-bold">
+              {value === null ? "—" : formatValue(value, component.unit)}
+            </span>
+            <span className="text-xs text-muted">
+              {component.forecast?.length ? "forecast" : "latest observed"}
+              {component.frequency ? ` · ${component.frequency}` : ""}
+            </span>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted">
+          <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
             {component.confidence && (
-              <>
-                <dt>Confidence</dt>
-                <dd className="text-right">{confidenceLabel(component.confidence)}</dd>
-              </>
+              <div className="flex gap-1">
+                <dt>Confidence:</dt>
+                <dd>{confidenceLabel(component.confidence)}</dd>
+              </div>
             )}
             {component.source && (
-              <>
-                <dt>Source</dt>
-                <dd className="text-right break-all">{component.source}</dd>
-              </>
+              <div className="flex gap-1">
+                <dt>Source:</dt>
+                <dd className="break-all">{component.source}</dd>
+              </div>
             )}
             {component.data_as_of && (
-              <>
-                <dt>Data as of</dt>
-                <dd className="text-right">{component.data_as_of}</dd>
-              </>
+              <div className="flex gap-1">
+                <dt>Data as of:</dt>
+                <dd>{component.data_as_of}</dd>
+              </div>
             )}
           </dl>
 
           {detailed && component.limitations.length > 0 && (
-            <ul className="card-foot text-xs text-muted list-disc pl-4">
+            <ul className="text-xs text-muted list-disc pl-4">
               {component.limitations.map((l) => (
                 <li key={l}>{l}</li>
               ))}

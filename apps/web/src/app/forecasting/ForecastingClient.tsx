@@ -7,6 +7,7 @@ import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { ComponentCard } from "@/components/forecast/ComponentCard";
+import { OpportunityRankBar } from "@/components/forecast/OpportunityRankBar";
 import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
@@ -146,15 +147,16 @@ export function ForecastingClient() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 lg:grid-cols-3">
+                <div className="flex flex-col gap-6">
                   {(["demand", "supply", "price"] as const).map((kind) => (
-                    <div key={kind} className="flex flex-col gap-2">
+                    <div key={kind} className="card flex flex-col gap-3">
                       <ComponentCard kind={kind} component={outlook[kind]} detailed />
                       <QuarterlyForecastChart
                         observed={series[kind].observed}
                         forecast={series[kind].forecast}
                         unit={outlook[kind].unit}
                         quartersToShow={quartersToShow}
+                        height={340}
                       />
                       <WhyThisResult
                         kind={kind}
@@ -279,26 +281,14 @@ function OpportunityCard({
         )}
       </div>
 
-      <div className="-mx-1 overflow-x-auto px-1">
-        <table className="w-full min-w-[15rem] text-xs">
-          <thead className="text-muted">
-            <tr>
-              <th className="text-left font-medium">Component</th>
-              <th className="text-right font-medium">Weight</th>
-              <th className="text-right font-medium">Score (0–100)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(opp.breakdown).map(([key, entry]) => (
-              <tr key={key}>
-                <td className="py-0.5">{opportunityFactorLabel(key)}</td>
-                <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
-                <td className="text-right">{entry.score.toFixed(0)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <OpportunityRankBar
+        rows={Object.entries(opp.breakdown).map(([key, entry]) => ({
+          key,
+          label: opportunityFactorLabel(key),
+          value: Math.round(entry.score),
+          detail: `${(entry.weight * 100).toFixed(0)}% weight`,
+        }))}
+      />
       <p className="text-xs text-muted">
         Each score (0–100) is this province&apos;s rank against the other four for that
         factor — 100 is the highest among the five, not &ldquo;100%&rdquo;.
