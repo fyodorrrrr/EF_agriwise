@@ -111,6 +111,10 @@ describe("CalabarzonMap", () => {
             coordinate_confidence: "HIGH",
             source_url: null,
             notes: "Verified public market",
+            market_description: null,
+            contact_number: null,
+            facebook_url: null,
+            description_status_note: null,
           },
         ]}
         provinceMetrics={{ Laguna: 72 }}
@@ -157,6 +161,8 @@ describe("CalabarzonMap", () => {
             market_id: "ORD-1", market_name: "Ordinary Market", municipality: "Calamba",
             province: "Laguna", latitude: 14.2, longitude: 121.1, market_type: "Public Market",
             operator: null, coordinate_confidence: "HIGH", source_url: null, notes: null,
+            market_description: null, contact_number: null, facebook_url: null,
+            description_status_note: null,
           },
           {
             market_id: "K-1", market_name: "KADIWA - LARES", municipality: "Lipa City",
@@ -164,6 +170,8 @@ describe("CalabarzonMap", () => {
             market_type: "KADIWA Recurring", operator: "DA CALABARZON",
             coordinate_confidence: "HIGH", source_url: "https://example.test/kadiwa",
             notes: "Every Monday",
+            market_description: null, contact_number: null, facebook_url: null,
+            description_status_note: null,
           },
         ]}
         provinceMetrics={{ Laguna: 72 }}

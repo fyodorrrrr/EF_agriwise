@@ -45,6 +45,10 @@ def _record(m) -> MarketRecord:
         coordinate_confidence=m.coordinate_confidence,
         source_url=m.source_url,
         notes=m.notes,
+        market_description=m.market_description,
+        contact_number=m.contact_number,
+        facebook_url=m.facebook_url,
+        description_status_note=m.description_status_note,
     )
 
 

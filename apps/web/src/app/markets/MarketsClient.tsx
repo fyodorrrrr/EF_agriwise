@@ -143,6 +143,36 @@ function MarketCard({ ranked }: { ranked: RankedMarket }) {
         </div>
       </details>
 
+      {(market.market_description || market.contact_number || market.facebook_url) && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-[var(--color-accent-600)]">
+            About this market
+          </summary>
+          <div className="mt-1 flex flex-col gap-1 text-muted">
+            {market.market_description && <p>{market.market_description}</p>}
+            {market.description_status_note && (
+              <p className="italic">{market.description_status_note}</p>
+            )}
+            {market.contact_number && (
+              <span>
+                <span className="font-medium text-ink">Contact: </span>
+                {market.contact_number}
+              </span>
+            )}
+            {market.facebook_url && (
+              <a
+                href={market.facebook_url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-ghost btn-sm self-start"
+              >
+                Facebook page →
+              </a>
+            )}
+          </div>
+        </details>
+      )}
+
       <div className="card-foot flex flex-wrap gap-2 text-xs">
         <Link
           href={`/mapping?market=${encodeURIComponent(market.market_id)}`}

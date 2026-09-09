@@ -21,7 +21,7 @@ _LAT_RANGE = (13.0, 15.2)
 _LON_RANGE = (120.0, 122.3)
 _PROVINCES = ("Batangas", "Cavite", "Laguna", "Quezon", "Rizal")
 
-_MARKETS_CSV = "CALABARZON_market_coordinates.csv"
+_MARKETS_CSV = "CALABARZON_market_directory.csv"
 _KADIWA_FULL_CSV = "kadiwa_markets_full_registry_agriwise_schema.csv"
 _CENTROIDS_CSV = "municipality_centroids.csv"
 _CONFIG_REL = Path("config") / "market_recommendation_config.json"
@@ -40,6 +40,10 @@ class MarketRecord:
     coordinate_confidence: str
     source_url: str | None
     notes: str | None
+    market_description: str | None = None
+    contact_number: str | None = None
+    facebook_url: str | None = None
+    description_status_note: str | None = None
 
 
 @dataclass(frozen=True)
@@ -116,9 +120,14 @@ def _load_markets(path: Path, diagnostics: list[str], seen: set[str]) -> list[Ma
     if not path.is_file():
         diagnostics.append(f"{path.name} missing; market directory is empty")
         return []
-    # The file mixes a UTF-8 BOM with cp1252 content (e.g. "Biñan"); latin-1
-    # never fails, then strip the BOM artefact off the first column name.
-    frame = pd.read_csv(path, encoding="latin-1", dtype=str).fillna("")
+    # Curated CSVs are UTF-8 (with or without a BOM), e.g. "Biñan"; some older
+    # exports mix in cp1252 bytes that aren't valid UTF-8. Try UTF-8 first so
+    # accented names decode correctly, and only fall back to latin-1 (which
+    # never fails, but mangles multi-byte UTF-8 sequences) for those.
+    try:
+        frame = pd.read_csv(path, encoding="utf-8-sig", dtype=str).fillna("")
+    except UnicodeDecodeError:
+        frame = pd.read_csv(path, encoding="latin-1", dtype=str).fillna("")
     frame.columns = [c.lstrip("﻿ï»¿") for c in frame.columns]
 
     records: list[MarketRecord] = []
@@ -156,6 +165,10 @@ def _load_markets(path: Path, diagnostics: list[str], seen: set[str]) -> list[Ma
                 coordinate_confidence=confidence,
                 source_url=row.get("source_url", "").strip() or None,
                 notes=row.get("notes", "").strip() or None,
+                market_description=row.get("market_description", "").strip() or None,
+                contact_number=row.get("contact_number", "").strip() or None,
+                facebook_url=row.get("facebook_url", "").strip() or None,
+                description_status_note=row.get("description_status_note", "").strip() or None,
             )
         )
     return records
