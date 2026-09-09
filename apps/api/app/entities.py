@@ -44,6 +44,16 @@ _MARKET_TRIGGERS: tuple[str, ...] = (
     "wholesale", "wholesaler", "bentahan", "pamilihan",
 )
 
+# Farmer is asking for a person / office to reach — attach an escalation contact.
+_CONTACT_TRIGGERS: tuple[str, ...] = (
+    "who can i call", "who can i contact", "who do i call", "who to call",
+    "phone number", "contact number", "hotline", "referral", "refer me",
+    "extension worker", "agriculturist", "da office", "municipal agri",
+    "provincial agri", "sino ang pwede", "sino ang tatawagan",
+    "sino ang matatawagan", "sino ang makakatulong", "makipag-ugnayan",
+    "kontak", "tawagan", "saan ako pupunta",
+)
+
 
 def _mentions(text: str, aliases: tuple[str, ...]) -> bool:
     return any(re.search(rf"\b{re.escape(alias)}\b", text) for alias in aliases)
@@ -69,3 +79,8 @@ def wants_overview(text: str) -> bool:
 def wants_markets(text: str) -> bool:
     low = (text or "").lower()
     return any(trigger in low for trigger in _MARKET_TRIGGERS)
+
+
+def wants_contact(text: str) -> bool:
+    low = (text or "").lower()
+    return any(trigger in low for trigger in _CONTACT_TRIGGERS)

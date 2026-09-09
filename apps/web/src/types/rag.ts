@@ -19,9 +19,22 @@ export interface RagQueryRequest {
   province?: string | null;
 }
 
+export interface ContactInfo {
+  name: string;
+  position: string;
+  organization: string;
+  office: string;
+  phone: string;
+  email: string;
+  how_to_reach: string;
+  verified: string;
+  scope: string;
+}
+
 export interface RagQueryResponse {
   answer: string;
   citations: Citation[];
   analytics_context_used: boolean;
   analytics_scope?: string | null;
+  contact?: ContactInfo | null;
 }

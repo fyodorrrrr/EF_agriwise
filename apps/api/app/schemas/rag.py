@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.contacts import ContactInfo
+
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -32,3 +34,6 @@ class RagQueryResponse(BaseModel):
     # Human-readable scope of the analytics used, e.g. "Rice · Laguna",
     # "Tomato · all provinces", "CALABARZON overview". None when unused.
     analytics_scope: str | None = None
+    # A real DA / provincial / municipal agriculture office for the farmer to
+    # reach — attached when the bot could not fully answer, or the farmer asked.
+    contact: ContactInfo | None = None

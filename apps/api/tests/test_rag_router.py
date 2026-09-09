@@ -182,6 +182,40 @@ def test_query_adds_market_ranking_for_a_where_to_sell_question():
     assert "Tomato in Laguna province" in ctx  # price outlook alongside
 
 
+def test_query_attaches_a_contact_when_the_bot_defers():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(
+            answer="The manuals do not cover this. Please contact your Municipal "
+            "Agriculturist or the Department of Agriculture.",
+            citations=[],
+            used_chunk_ids=[],
+        )
+    )
+    client = _client(pipeline)
+
+    resp = client.post(
+        "/rag/query", json={"question": "my soil has a strange white crust in Batangas"}
+    )
+    body = resp.json()
+    assert body["contact"] is not None
+    assert "Batangas" in body["contact"]["scope"]
+    assert body["contact"]["phone"]
+
+
+def test_query_no_contact_on_a_normal_answered_question():
+    pipeline = _StubPipeline(
+        answer=RagAnswer(
+            answer="Keep a cash book with date, item, and cost.",
+            citations=[Citation(doc_id="fbs", doc_title="Farm Business School Manual",
+                                page_start=88, page_end=88)],
+            used_chunk_ids=["fbs::1"],
+        )
+    )
+    client = _client(pipeline)
+    body = client.post("/rag/query", json={"question": "how do I record expenses"}).json()
+    assert body["contact"] is None
+
+
 def test_query_validation_error_is_422():
     client = _client(_StubPipeline(answer=None))
     assert client.post("/rag/query", json={"question": ""}).status_code == 422
