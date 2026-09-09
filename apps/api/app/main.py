@@ -95,6 +95,12 @@ def _build_municipal_disaggregation_service(forecast_service: ForecastService):
     return MunicipalDisaggregationService(forecast_service)
 
 
+def _build_advisory_service(forecast_service, market_registry):
+    from ml.forecasting.advisory import AdvisoryService
+
+    return AdvisoryService(forecast_service, market_registry)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown hook.
@@ -109,6 +115,10 @@ async def lifespan(app: FastAPI):
         app.state.forecast_service
     )
     app.state.market_registry = _build_market_registry(get_settings())
+    app.state.advisory_service = _build_advisory_service(
+        app.state.forecast_service,
+        app.state.market_registry,
+    )
     yield
 
 
@@ -128,12 +138,14 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    from app.routers import advisory as advisory_router
     from app.routers import forecast as forecast_router
     from app.routers import markets as markets_router
     from app.routers import rag as rag_router
 
     app.include_router(rag_router.router)
     app.include_router(forecast_router.router)
+    app.include_router(advisory_router.router)
     app.include_router(markets_router.router)
 
     # Ensure these attributes exist even when TestClient is used without the
@@ -145,6 +157,10 @@ def create_app() -> FastAPI:
         app.state.forecast_service
     )
     app.state.market_registry = _build_market_registry(settings)
+    app.state.advisory_service = _build_advisory_service(
+        app.state.forecast_service,
+        app.state.market_registry,
+    )
 
     return app
 

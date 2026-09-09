@@ -65,6 +65,19 @@ def test_outlook_reflects_real_artifacts_when_ml_artifacts_is_populated():
     assert body["demand"]["limitations"]
 
 
+def test_red_onion_outlook_serves_real_demand_and_synthetic_components():
+    response = client.get(
+        "/forecast/outlook", params={"commodity": "Red Onion", "province": "Laguna"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["demand"]["source"] == "psa_sua_population_hfce_denton"
+    assert body["supply"]["source"] == "seasonal_naive"
+    assert body["price"]["source"] == "seasonal_naive"
+    assert body["opportunity"]["verdict"] == "PASS"
+
+
 def test_outlook_rejects_unknown_commodity():
     response = client.get("/forecast/outlook", params={"commodity": "Mango", "province": "Laguna"})
 

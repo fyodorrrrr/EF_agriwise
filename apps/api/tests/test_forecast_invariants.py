@@ -23,23 +23,25 @@ def _service() -> ForecastService:
     return ForecastService(ArtifactRegistry.load(_ARTIFACTS))
 
 
-def test_red_onion_supply_price_and_opportunity_stay_unavailable():
+def test_red_onion_synthetic_supply_price_and_opportunity_are_available():
     svc = _service()
     for province in ("Batangas", "Cavite", "Laguna", "Quezon", "Rizal"):
         outlook = svc.outlook("Red Onion", province)
-        assert outlook.supply.verdict == "INSUFFICIENT_DATA"
-        assert outlook.supply.observed is None and outlook.supply.forecast is None
-        assert outlook.price.verdict == "INSUFFICIENT_DATA"
-        assert outlook.opportunity.verdict == "INSUFFICIENT_DATA"
-        assert outlook.opportunity.score is None
+        assert outlook.supply.verdict == "CAUTION"
+        assert outlook.price.verdict == "CAUTION"
+        assert outlook.opportunity.verdict == "PASS"
+        assert outlook.opportunity.score is not None
 
 
-def test_no_metric_tonne_demand_or_supply_gap_anywhere():
-    """ADR-001: demand is an index; there is no supply_gap_mt in the contract."""
+def test_no_supply_gap_anywhere_and_only_red_onion_has_physical_demand():
+    """Physical Red Onion demand does not imply a physical supply-gap metric."""
     svc = _service()
     for commodity in ("Rice", "Tomato", "Red Onion", "Banana"):
         outlook = svc.outlook(commodity, "Laguna")
-        assert outlook.demand.unit is None or "index" in outlook.demand.unit.lower()
+        if commodity == "Red Onion":
+            assert outlook.demand.unit == "MT"
+        else:
+            assert outlook.demand.unit is None or "index" in outlook.demand.unit.lower()
         serialized = json.dumps(
             {
                 "demand": outlook.demand.__dict__,

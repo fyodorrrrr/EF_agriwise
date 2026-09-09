@@ -76,14 +76,13 @@ def test_full_grid_context_has_a_row_for_every_commodity_province_pair():
             assert f"- {commodity} / {province}:" in ctx
     # Red Onion supply/price have no model — the grid says so, does not invent a number.
     onion_rows = [ln for ln in ctx.splitlines() if ln.startswith("- Red Onion /")]
-    assert onion_rows and all("supply not available" in ln for ln in onion_rows)
+    assert onion_rows and all("supply not available" not in ln for ln in onion_rows)
+    assert all("opportunity " in ln for ln in onion_rows)
 
 
-def test_red_onion_context_marks_supply_price_and_opportunity_unavailable():
+def test_red_onion_context_reports_synthetic_supply_price_and_opportunity():
     ctx = build_analytics_context(_service(), "Red Onion", "Batangas")
 
-    assert "Supply (metric tonnes, quarterly): not available" in ctx
-    assert "Price (PHP/kg, monthly): not available" in ctx
-    assert "Opportunity: not available" in ctx
-    # ...but the demand proxy index is still reported
-    assert "Demand (Estimated Demand Proxy, index): quality:" in ctx
+    assert "Supply (metric tonnes, quarterly): quality: Planning Estimate" in ctx
+    assert "Price (PHP/kg, monthly): quality: Planning Estimate" in ctx
+    assert "Opportunity: " in ctx and "not available" not in ctx

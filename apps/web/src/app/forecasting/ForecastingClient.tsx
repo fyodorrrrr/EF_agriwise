@@ -161,7 +161,7 @@ export function ForecastingClient() {
                       <WhyThisResult
                         kind={kind}
                         component={outlook[kind]}
-                        disclaimer={disclaimerFor(kind, methodology)}
+                        disclaimer={disclaimerFor(kind, methodology, outlook[kind].unit)}
                       />
                     </div>
                   ))}
@@ -181,9 +181,16 @@ export function ForecastingClient() {
 function disclaimerFor(
   kind: "demand" | "supply" | "price" | "opportunity",
   methodology: MethodologyResponse | null,
+  unit?: string | null,
 ): string {
   const list = methodology?.disclaimers ?? [];
   if (kind === "demand") {
+    if (unit === "MT") {
+      return (
+        "Red Onion demand applies national PSA Onion per-capita availability to each province " +
+        "and uses broad food spending only to allocate annual totals by quarter."
+      );
+    }
     return (
       list.find((d) => d.includes("Estimated Demand Proxy")) ??
       "Estimated Demand Proxy is a FIES expenditure-category index, not observed consumption."

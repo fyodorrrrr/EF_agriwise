@@ -1,4 +1,4 @@
-# Tomato and Banana Demand Forecasting Pipeline
+# Tomato, Banana, and Red Onion Demand Forecasting Pipeline
 
 ## Added pipeline
 

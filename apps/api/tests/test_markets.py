@@ -115,6 +115,6 @@ def test_markets_endpoints():
     assert ranked["ranked"]
     assert any("not travel time" in p for p in ranked["policy"])
 
-    # Red Onion: supply + price are INSUFFICIENT_DATA -> only demand supported.
+    # Red Onion: real demand plus synthetic supply and price are supported.
     ro = client.get("/markets/rank", params={"commodity": "Red Onion", "province": "Rizal"}).json()
-    assert ro["supported_analytics"] == 1
+    assert ro["supported_analytics"] == 3
