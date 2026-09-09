@@ -1,0 +1,32 @@
+{
+  "schema_version": "3.3",
+  "components": {
+    "demand_pressure_index": {
+      "weight": 0.35,
+      "direction": "higher_better"
+    },
+    "supply_gap_or_scarcity_index": {
+      "weight": 0.25,
+      "direction": "higher_better"
+    },
+    "price_opportunity_index": {
+      "weight": 0.2,
+      "direction": "higher_better"
+    },
+    "market_flow_dependence_index": {
+      "weight": 0.1,
+      "direction": "higher_better",
+      "optional": true
+    },
+    "forecast_confidence_index": {
+      "weight": 0.1,
+      "direction": "higher_better"
+    }
+  },
+  "policy": [
+    "Normalize all inputs to a common 0-100 scale before combination.",
+    "Do not subtract FIES pesos directly from supply metric tons.",
+    "Keep demand-pressure construction independent from the supply component; combine them only after normalization in the opportunity layer.",
+    "Weights are transparent configuration, not learned ground truth."
+  ]
+}
