@@ -1,23 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { CommoditySelect } from "@/components/filters/CommoditySelect";
+import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { ComponentCard } from "@/components/forecast/ComponentCard";
 import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
-import { COMMODITIES, PROVINCES } from "@/lib/domain";
+import { COMMODITIES } from "@/lib/domain";
 import { getMethodology, getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
 import { toQuarterly } from "@/lib/quarterly";
-import type {
-  Commodity,
-  MethodologyResponse,
-  OutlookResponse,
-  Province,
-} from "@/types/forecast";
+import type { Commodity, MethodologyResponse, OutlookResponse } from "@/types/forecast";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -89,49 +85,13 @@ export function ForecastingClient() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">Commodity</span>
-            <select
-              aria-label="Commodity"
-              className="select"
-              value={commodity ?? ""}
-              onChange={(e) => setCommodity((e.target.value || null) as Commodity | null)}
-            >
-              <option value="">Select…</option>
-              {COMMODITIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">Province</span>
-            <select
-              aria-label="Province"
-              className="select"
-              value={province ?? ""}
-              onChange={(e) => setProvince((e.target.value || null) as Province | null)}
-            >
-              <option value="">Select…</option>
-              {PROVINCES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CommoditySelect value={commodity} onChange={setCommodity} />
+          <ProvinceSelect value={province} onChange={setProvince} />
         </div>
       </div>
 
       {(!commodity || !province) && (
-        <p className="state">
-          Pick a commodity and province — or set them once in{" "}
-          <Link href="/setup" className="underline">
-            Setup
-          </Link>
-          .
-        </p>
+        <p className="state">Pick a commodity and province above to see the forecast.</p>
       )}
 
       {status === "loading" && <p className="state state-loading">Loading forecast…</p>}
