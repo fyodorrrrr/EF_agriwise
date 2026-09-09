@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { COMMODITIES, PROVINCES } from "@/lib/domain";
+import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
+import { COMMODITIES } from "@/lib/domain";
 import { getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
-import type { Commodity, OutlookResponse, Province } from "@/types/forecast";
+import type { Commodity, OutlookResponse } from "@/types/forecast";
 import { formatQuarter, formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Sparkline } from "@/components/forecast/Sparkline";
@@ -91,33 +92,10 @@ export function DashboardClient() {
             commodities. This is not a municipality-level forecast.
           </p>
         </div>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Province</span>
-          <select
-            aria-label="Province"
-            className="select"
-            value={province ?? ""}
-            onChange={(e) => setProvince((e.target.value || null) as Province | null)}
-          >
-            <option value="">Select a province…</option>
-            {PROVINCES.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ProvinceSelect value={province} onChange={setProvince} />
       </div>
 
-      {!province && (
-        <p className="state">
-          Choose a province to see its outlook, or head to{" "}
-          <Link href="/setup" className="underline">
-            Setup
-          </Link>
-          .
-        </p>
-      )}
+      {!province && <p className="state">Choose a province above to see its outlook.</p>}
 
       {status === "loading" && <p className="state state-loading">Loading outlook…</p>}
 

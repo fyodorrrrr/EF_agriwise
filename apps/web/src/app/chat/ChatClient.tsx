@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { CommoditySelect } from "@/components/filters/CommoditySelect";
+import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { usePreferences } from "@/lib/preferences";
 import { askAgriWise } from "@/lib/rag";
 import type { Citation } from "@/types/rag";
@@ -25,7 +27,7 @@ function pageLabel(c: Citation): string {
 }
 
 export default function ChatClient() {
-  const { preferences, isHydrated } = usePreferences();
+  const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
   const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -76,6 +78,30 @@ export default function ChatClient() {
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
       <h1 className="text-2xl font-semibold">Ask AgriWise</h1>
+
+      {isHydrated && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-muted">
+            Optional — narrow answers to one commodity and province. Chat works fine without it.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <CommoditySelect value={preferences.commodity} onChange={setCommodity} />
+            <ProvinceSelect value={preferences.province} onChange={setProvince} />
+            {(preferences.commodity || preferences.province) && (
+              <button
+                type="button"
+                className="action"
+                onClick={() => {
+                  setCommodity(null);
+                  setProvince(null);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {isHydrated && preferences.commodity && preferences.province && (
         <p className="text-xs text-muted">
