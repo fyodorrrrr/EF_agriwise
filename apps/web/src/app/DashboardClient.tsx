@@ -7,15 +7,20 @@ import { BrandLoader } from "@/components/BrandLoader";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { COMMODITIES } from "@/lib/domain";
 import { getOutlook } from "@/lib/forecast";
+import { toQuarterly } from "@/lib/quarterly";
 import { usePreferences } from "@/lib/preferences";
 import type { Commodity, OutlookResponse } from "@/types/forecast";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
-import { KpiCard } from "@/components/dashboard/KpiCard";
-import { Sparkline } from "@/components/forecast/Sparkline";
+import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
+import { OpportunityRankBar } from "@/components/forecast/OpportunityRankBar";
 import { classificationLabel } from "@/components/forecast/glossary";
 
 type Row = { commodity: Commodity; outlook: OutlookResponse };
 type Status = "idle" | "loading" | "ready" | "error";
+
+// Dashboard has no horizon filter (unlike Forecasting) — show whatever the
+// API returned, up to a generous cap that never trims a real forecast.
+const DASHBOARD_QUARTERS_TO_SHOW = 12;
 
 const DASHBOARD_METRIC_LABELS = {
   demand: "Estimated demand",
@@ -63,19 +68,12 @@ function computeKpis(rows: Row[]) {
       outlook.price.verdict !== "INSUFFICIENT_DATA" &&
       outlook.opportunity.verdict !== "INSUFFICIENT_DATA",
   );
-  const scored = rows.filter(({ outlook }) => outlook.opportunity.score !== null);
-  const best = scored.reduce<Row | null>(
-    (top, row) =>
-      !top || (row.outlook.opportunity.score ?? -Infinity) > (top.outlook.opportunity.score ?? -Infinity)
-        ? row
-        : top,
-    null,
-  );
-  const avgScore = scored.length
-    ? scored.reduce((sum, { outlook }) => sum + (outlook.opportunity.score ?? 0), 0) / scored.length
-    : null;
+  const ranked = rows
+    .filter(({ outlook }) => outlook.opportunity.score !== null)
+    .slice()
+    .sort((a, b) => (b.outlook.opportunity.score ?? 0) - (a.outlook.opportunity.score ?? 0));
 
-  return { covered, best, avgScore };
+  return { covered, ranked };
 }
 
 export function DashboardClient() {
@@ -138,29 +136,27 @@ export function DashboardClient() {
       )}
 
       {status === "ready" && rows.length > 0 && (() => {
-        const { covered, best, avgScore } = computeKpis(rows);
+        const { covered, ranked } = computeKpis(rows);
         return (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <KpiCard label="Commodities tracked" value={String(COMMODITIES.length)} />
-            <KpiCard
-              label="Data coverage"
-              value={`${covered.length}/${rows.length}`}
-              sublabel="fully populated"
-            />
-            <KpiCard
-              label="Best opportunity"
-              value={best ? best.commodity : "—"}
-              sublabel={
-                best?.outlook.opportunity.classification
-                  ? dashboardClassificationLabel(best.outlook.opportunity.classification)
-                  : undefined
-              }
-            />
-            <KpiCard
-              label="Average opportunity score"
-              value={avgScore === null ? "—" : avgScore.toFixed(0)}
-            />
-          </div>
+          <>
+            <p className="text-xs text-muted">
+              Tracking {COMMODITIES.length} commodities · {covered.length}/{rows.length} fully
+              populated
+            </p>
+            {ranked.length > 0 && (
+              <div className="card flex flex-col gap-3">
+                <span className="card-kicker">Best opportunity right now</span>
+                <OpportunityRankBar
+                  rows={ranked.map(({ commodity, outlook }) => ({
+                    key: commodity,
+                    label: commodity,
+                    value: Math.round(outlook.opportunity.score ?? 0),
+                    detail: dashboardClassificationLabel(outlook.opportunity.classification),
+                  }))}
+                />
+              </div>
+            )}
+          </>
         );
       })()}
 
@@ -171,35 +167,33 @@ export function DashboardClient() {
             <div key={commodity} className="card dashboard-card flex flex-col gap-3">
               <div className="card-head">
                 <div className="card-title">{commodity}</div>
-                <div className="flex items-center gap-3">
-                  <Sparkline observed={outlook.demand.observed} forecast={outlook.demand.forecast} />
-                  {opp.verdict === "INSUFFICIENT_DATA" ? (
-                    <span className={verdictBadgeClass("INSUFFICIENT_DATA")}>
-                      Opportunity: {verdictLabel("INSUFFICIENT_DATA")}
-                    </span>
-                  ) : (
-                    <span className="badge badge-accent">
-                      {dashboardClassificationLabel(opp.classification)} ·{" "}
-                      {Math.round(opp.score ?? 0)}
-                    </span>
-                  )}
-                </div>
+                {opp.verdict === "INSUFFICIENT_DATA" ? (
+                  <span className={verdictBadgeClass("INSUFFICIENT_DATA")}>
+                    Opportunity: {verdictLabel("INSUFFICIENT_DATA")}
+                  </span>
+                ) : (
+                  <span className="badge badge-accent">
+                    {dashboardClassificationLabel(opp.classification)} ·{" "}
+                    {Math.round(opp.score ?? 0)}
+                  </span>
+                )}
               </div>
 
-              <div className="flex flex-col gap-2 text-sm sm:grid sm:grid-cols-3 sm:gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {(["demand", "supply", "price"] as const).map((kind) => (
-                  <div
-                    key={kind}
-                    className="flex items-center justify-between gap-3 sm:flex-col sm:items-start sm:gap-1"
-                  >
+                  <div key={kind} className="flex flex-col gap-2">
                     <span className="card-kicker">{DASHBOARD_METRIC_LABELS[kind]}</span>
-                    <span className="flex items-center gap-2 sm:mt-1 sm:flex-col sm:items-start sm:gap-1">
-                      <span className="text-md font-semibold">
-                        {componentSummary(outlook, kind)}
-                      </span>
-                      <span className={verdictBadgeClass(outlook[kind].verdict)}>
-                        {verdictLabel(outlook[kind].verdict)}
-                      </span>
+                    <QuarterlyForecastChart
+                      observed={kind === "price" ? toQuarterly(outlook.price.observed) : outlook[kind].observed}
+                      forecast={kind === "price" ? toQuarterly(outlook.price.forecast) : outlook[kind].forecast}
+                      unit={outlook[kind].unit}
+                      quartersToShow={DASHBOARD_QUARTERS_TO_SHOW}
+                      height={170}
+                      showAvailabilityNote={false}
+                    />
+                    <span className="text-md font-semibold">{componentSummary(outlook, kind)}</span>
+                    <span className={verdictBadgeClass(outlook[kind].verdict)}>
+                      {verdictLabel(outlook[kind].verdict)}
                     </span>
                   </div>
                 ))}

@@ -320,6 +320,11 @@
   .meter > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent-500); }
   .meter-row { display: flex; justify-content: space-between; gap: 16px; font-size: var(--text-xs); margin-bottom: 5px; }
 
+  /* A chart is a first-class page element here, not a card accessory —
+     height is a variable so the same markup can ship a compact Dashboard
+     size and a large Forecasting size, and shrink under one breakpoint. */
+  .chart-frame { width: 100%; height: var(--chart-height, 140px); }
+
   /* — table — */
   .table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .table th { text-align: left; font-size: var(--text-xs); font-weight: 600; color: var(--color-muted); padding: 12px; border-bottom: 1px solid var(--color-divider); }
@@ -562,6 +567,7 @@
   .chip-group { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .chip-group::-webkit-scrollbar { display: none; }
   .chip-group > * { flex: none; }
+  .chart-frame-lg { --chart-height: 240px; }
 }
 @media (hover: none) {
   .btn { padding: 12px 20px; min-height: 44px; }

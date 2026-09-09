@@ -100,7 +100,7 @@ describe("Dashboard", () => {
     );
     vi.mocked(getOutlook).mockImplementation((c) => Promise.resolve(outlook(c) as never));
 
-    renderDashboard();
+    const { container } = renderDashboard();
 
     await waitFor(() => expect(screen.getAllByText("Rice").length).toBeGreaterThan(0));
     expect(screen.getAllByText("Tomato").length).toBeGreaterThan(0);
@@ -117,8 +117,15 @@ describe("Dashboard", () => {
     expect(screen.getAllByText("Farmgate price")).toHaveLength(4);
     expect(screen.queryByText("Estimated Demand Proxy")).toBeNull();
     expect(screen.getAllByText("Data period: Quarter 3, 2026")).toHaveLength(4);
-    expect(screen.getByText("Average opportunity score")).toBeVisible();
-    expect(screen.queryByText("Avg opportunity score")).toBeNull();
+    // KPI tiles are gone — coverage is one plain sentence, and the two
+    // "best opportunity" tiles are now a ranked bar strip.
+    expect(screen.queryByText("Average opportunity score")).toBeNull();
+    expect(screen.getByText(/tracking 4 commodities/i)).toBeVisible();
+    expect(screen.getByText("Best opportunity right now")).toBeVisible();
+    // A real chart per commodity per metric (demand/supply/price), not the
+    // old 160×40 sparkline.
+    expect(screen.queryByLabelText("Trend")).toBeNull();
+    expect(container.querySelectorAll(".chart-frame").length).toBe(12);
     expect(
       screen.queryByText(/demand, supply, and price signals here are roughly in line/i),
     ).not.toBeInTheDocument();
