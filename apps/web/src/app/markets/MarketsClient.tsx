@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
+import { marketFactorLabel } from "@/components/forecast/glossary";
 import { rankMarkets } from "@/lib/markets";
 import { usePreferences } from "@/lib/preferences";
 import type { MarketRankingResponse, RankedMarket } from "@/types/markets";
@@ -110,7 +111,7 @@ function MarketCard({ ranked }: { ranked: RankedMarket }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold">{ranked.score}</span>
+          <span className="text-lg font-bold">{ranked.score} out of 100</span>
           <span className={CONFIDENCE_BADGE[market.coordinate_confidence] ?? "badge badge-neutral"}>
             {market.coordinate_confidence.replaceAll("_", " ").toLowerCase()}
           </span>
@@ -130,7 +131,7 @@ function MarketCard({ ranked }: { ranked: RankedMarket }) {
             <tbody>
               {Object.entries(ranked.breakdown).map(([factor, entry]) => (
                 <tr key={factor}>
-                  <td className="py-0.5">{factor.replaceAll("_", " ")}</td>
+                  <td className="py-0.5">{marketFactorLabel(factor)}</td>
                   <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
                   <td className="text-right">{(entry.score * 100).toFixed(0)}</td>
                 </tr>

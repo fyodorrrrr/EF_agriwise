@@ -4,7 +4,9 @@ import {
   OPPORTUNITY_SCORE_EXPLAINER,
   VERDICT_MEANING,
   classificationMeaning,
+  confidenceLabel,
 } from "@/components/forecast/glossary";
+import { verdictLabel } from "@/components/forecast/verdict";
 
 function coverage(component: OutlookComponent): string | null {
   const obs = component.observed ?? [];
@@ -42,7 +44,7 @@ export function WhyThisResult({
         Why this result?
       </summary>
       <dl className="mt-2 flex flex-col gap-0.5 border-l-2 border-[var(--color-divider)] pl-3">
-        <Row label="Verdict" value={component.verdict.replaceAll("_", " ")} />
+        <Row label="Verdict" value={verdictLabel(component.verdict)} />
         <Row label="What that means" value={VERDICT_MEANING[component.verdict]} />
         {isOutlook && kind === "demand" && (
           <Row
@@ -60,11 +62,14 @@ export function WhyThisResult({
                   : (component as OutlookComponent).source === "seasonal_naive"
                     ? "seasonal-naive fallback (no deployable model)"
                     : (component as OutlookComponent).source === "demand_pressure_index"
-                      ? "committed demand-pressure index (FIES baseline + LFS activity + seasonal indices)"
+                      ? "a demand-pressure index built from national household spending and employment survey data, plus seasonal patterns"
                       : (component as OutlookComponent).source
               }
             />
-            <Row label="Confidence" value={(component as OutlookComponent).confidence} />
+            <Row
+              label="Confidence"
+              value={confidenceLabel((component as OutlookComponent).confidence)}
+            />
             <Row label="Frequency" value={(component as OutlookComponent).frequency} />
             <Row label="Data coverage" value={coverage(component as OutlookComponent)} />
             <Row

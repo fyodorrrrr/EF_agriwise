@@ -181,7 +181,7 @@ export function MappingAnalytics() {
                 <span className="text-muted">
                   {metric
                     ? metric.unit === "score"
-                      ? metric.value.toFixed(1)
+                      ? `${metric.value.toFixed(1)} out of 100`
                       : formatValue(metric.value, metric.unit)
                     : "not available"}
                 </span>

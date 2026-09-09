@@ -7,17 +7,10 @@ import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { ComponentCard } from "@/components/forecast/ComponentCard";
-import { GlossaryPanel } from "@/components/forecast/GlossaryPanel";
 import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
-import {
-  OPPORTUNITY_SCORE_EXPLAINER,
-  NO_SUPPLY_DEMAND_RATIO,
-  classificationLabel,
-  classificationMeaning,
-} from "@/components/forecast/glossary";
-import { InfoTip } from "@/components/ui/InfoTip";
+import { classificationLabel, opportunityFactorLabel } from "@/components/forecast/glossary";
 import { COMMODITIES } from "@/lib/domain";
 import { getMethodology, getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
@@ -176,7 +169,6 @@ export function ForecastingClient() {
           })()}
 
           <OpportunityCard outlook={outlook} methodology={methodology} />
-          <GlossaryPanel />
           {methodology && <MethodologyPanel methodology={methodology} />}
         </>
       )}
@@ -268,12 +260,7 @@ function OpportunityCard({
     <div className="card flex flex-col gap-3">
       <div className="card-head">
         <div>
-          <span className="inline-flex items-center gap-1">
-            <span className="card-kicker">Opportunity</span>
-            <InfoTip label="What is the Opportunity score?">
-              {OPPORTUNITY_SCORE_EXPLAINER} {NO_SUPPLY_DEMAND_RATIO}
-            </InfoTip>
-          </span>
+          <span className="card-kicker">Opportunity</span>
           <p className="text-xs text-muted">
             Peer-relative decision support — not a physical supply gap, not a learned
             target.
@@ -283,13 +270,8 @@ function OpportunityCard({
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-2xl font-bold">{opp.score}</span>
-        <span className="inline-flex items-center gap-1">
-          <span className="badge badge-accent">{classificationLabel(opp.classification)}</span>
-          <InfoTip label="What does this band mean?">
-            {classificationMeaning(opp.classification)}
-          </InfoTip>
-        </span>
+        <span className="text-2xl font-bold">{Math.round(opp.score ?? 0)} out of 100</span>
+        <span className="badge badge-accent">{classificationLabel(opp.classification)}</span>
         {opp.shared_quarter && (
           <span className="text-xs text-muted">
             shared quarter {formatQuarter(opp.shared_quarter)}
@@ -309,7 +291,7 @@ function OpportunityCard({
           <tbody>
             {Object.entries(opp.breakdown).map(([key, entry]) => (
               <tr key={key}>
-                <td className="py-0.5">{key.replaceAll("_", " ")}</td>
+                <td className="py-0.5">{opportunityFactorLabel(key)}</td>
                 <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
                 <td className="text-right">{entry.score.toFixed(0)}</td>
               </tr>
