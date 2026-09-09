@@ -1,4 +1,4 @@
-"""Build PSA-based Tomato and Banana provincial quarterly demand estimates."""
+"""Build PSA-based Tomato, Banana, and Red Onion provincial quarterly demand estimates."""
 
 from __future__ import annotations
 
@@ -14,8 +14,15 @@ from .denton import proportional_denton
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "data" / "vegetable_fruit_demand_sources"
 OUTPUT = ROOT / "data" / "processed" / "vegetable_fruit_demand"
+FORECAST_PREPARED = ROOT / "ml" / "artifacts" / "prepared"
 PROVINCES = ("BATANGAS", "CAVITE", "LAGUNA", "QUEZON_COMBINED", "RIZAL")
 DISPLAY_PROVINCE = {"QUEZON_COMBINED": "Quezon", "BATANGAS": "Batangas", "CAVITE": "Cavite", "LAGUNA": "Laguna", "RIZAL": "Rizal"}
+
+COMMODITY_SOURCES = (
+    ("Tomato", "sua_tomato.csv", "UT Per Capita kg/yr"),
+    ("Banana", "sua_banana.csv", "UT Per Capita (kg/yr)"),
+    ("Red Onion", "sua_red_onion.csv", "UT Per Capita kg/yr"),
+)
 
 
 def extract_population() -> pd.DataFrame:
@@ -62,10 +69,7 @@ def extract_population() -> pd.DataFrame:
 
 def build_pcc() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     rows, evaluations, selections = [], [], {}
-    for commodity, filename, pcc_column in [
-        ("Tomato", "sua_tomato.csv", "UT Per Capita kg/yr"),
-        ("Banana", "sua_banana.csv", "UT Per Capita (kg/yr)"),
-    ]:
+    for commodity, filename, pcc_column in COMMODITY_SOURCES:
         # Read only the annual PCC target. Production and other SUA supply/use
         # fields are deliberately excluded from the demand calculation.
         source = pd.read_csv(SOURCE / filename, usecols=["Year", pcc_column]).sort_values("Year")
@@ -158,7 +162,7 @@ def main() -> None:
 
     population_pivot = population.pivot(index="year", columns="geography", values="population")
     demand_rows = []
-    for commodity in ("Tomato", "Banana"):
+    for commodity, _, _ in COMMODITY_SOURCES:
         series = pcc[pcc.commodity.eq(commodity)].set_index("year")
         for province in PROVINCES:
             for year in range(2020, 2031):
@@ -178,6 +182,15 @@ def main() -> None:
         max_error = max(max_error, np.max(np.abs(quarterly.reshape(-1, 4).sum(axis=1) - controls)))
     quarterly_demand = pd.DataFrame(quarterly_rows)
     quarterly_demand.to_csv(OUTPUT / "quarterly_demand_province.csv", index=False)
+    red_onion = quarterly_demand[quarterly_demand["commodity"] == "Red Onion"].copy()
+    red_onion["date"] = pd.PeriodIndex(
+        red_onion["year"].astype(str) + red_onion["quarter"], freq="Q"
+    ).start_time
+    red_onion = red_onion.rename(columns={"quarterly_demand_mt": "target"})[
+        ["commodity", "province", "date", "target", "hfce_status"]
+    ]
+    FORECAST_PREPARED.mkdir(parents=True, exist_ok=True)
+    red_onion.to_csv(FORECAST_PREPARED / "red_onion_demand_mt.csv", index=False)
 
     # Required validations.
     assert (pcc.loc[pcc.value_type.eq("FORECAST"), "pcc_kg_person_year"] >= 0).all()
@@ -198,10 +211,11 @@ def main() -> None:
 
     print("DEMAND PIPELINE COMPLETE")
     print(f"Population: 2020-2030; {', '.join(PROVINCES)} plus CALABARZON/Lucena audit rows; Quezon = Quezon + Lucena.")
-    for commodity in ("Tomato", "Banana"):
+    for commodity, _, _ in COMMODITY_SOURCES:
         metrics = annual_evaluation[(annual_evaluation.series == f"annual_pcc_{commodity.lower()}") & annual_evaluation.selected].iloc[0]
         latest = pcc[(pcc.commodity == commodity) & (pcc.year == 2030)].iloc[0]
-        print(f"{commodity}: 1990-2022; {selected_models[commodity]}; MAE {metrics.mae:.3f}, RMSE {metrics.rmse:.3f}, MAPE {metrics.mape:.2f}%, latest PCC {latest.pcc_kg_person_year:.3f}.")
+        observed = pcc[(pcc.commodity == commodity) & (pcc.value_type == "OBSERVED")]
+        print(f"{commodity}: {observed.year.min()}-{observed.year.max()}; {selected_models[commodity]}; MAE {metrics.mae:.3f}, RMSE {metrics.rmse:.3f}, MAPE {metrics.mape:.2f}%, latest PCC {latest.pcc_kg_person_year:.3f}.")
     print(f"HFCE: observed 2000 Q1-2026 Q2; {hfce_method}; forecast 2026 Q3-2030 Q4.")
     print(f"Quarterly demand: 2020 Q1-2030 Q4; reconciliation max error {max_error:.3e}.")
     print("Files created: population_calabarzon.csv; annual_pcc_forecasts.csv; annual_demand_province.csv; hfce_quarterly_indicator.csv; quarterly_demand_province.csv; model_evaluation.csv; methodology_summary.md")

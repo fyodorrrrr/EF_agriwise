@@ -182,6 +182,11 @@ class ForecastService:
     # -- demand ----------------------------------------------------------
 
     def _demand_component(self, commodity: str, province: str) -> OutlookComponentPayload:
+        if commodity == "Red Onion":
+            physical = self._red_onion_physical_demand_component(province)
+            if physical is not None:
+                return physical
+
         meta = self._registry.get(commodity, "demand")
         slug = slugify_commodity(commodity)
 
@@ -221,6 +226,37 @@ class ForecastService:
             label=meta.label if meta else None,
             limitations=list(meta.limitations) if meta else [],
             metrics=dict(meta.metrics) if meta else {},
+        )
+
+    def _red_onion_physical_demand_component(
+        self, province: str
+    ) -> OutlookComponentPayload | None:
+        table = self._registry.red_onion_physical_demand
+        required = {"province", "date", "target", "hfce_status"}
+        if table.empty or not required <= set(table.columns):
+            return None
+
+        rows = table[table["province"] == province].sort_values("date")
+        observed = rows[rows["hfce_status"] == "OBSERVED"]
+        forecast = rows[rows["hfce_status"] == "FORECAST"]
+        if observed.empty or forecast.empty:
+            return None
+
+        return OutlookComponentPayload(
+            verdict="INDICATIVE_PROXY",
+            observed=_points(observed.tail(_OBSERVED_TAIL["demand"]), "target"),
+            forecast=_points(forecast.head(_FORECAST_HORIZON), "target"),
+            unit="MT",
+            frequency="quarterly",
+            confidence="MODERATE",
+            source="psa_sua_population_hfce_denton",
+            data_as_of=_iso(observed.iloc[-1]["date"]),
+            label="Estimated physical demand (PSA proxy)",
+            limitations=[
+                "National PSA Onion per-capita availability is applied to each province; "
+                "this is not observed provincial consumption.",
+                "Quarterly timing uses broad food HFCE and is benchmarked to annual PSA controls.",
+            ],
         )
 
     # -- supply / price -------------------------------------------------
@@ -365,6 +401,24 @@ class ForecastService:
     def _evidence_component(
         self, commodity: str, component: str, methodology: dict
     ) -> EvidenceComponentPayload:
+        if commodity == "Red Onion" and component == "demand":
+            physical = self._registry.red_onion_physical_demand
+            if not physical.empty:
+                return EvidenceComponentPayload(
+                    commodity=commodity,
+                    component=component,
+                    verdict="INDICATIVE_PROXY",
+                    target="quarterly_demand_mt",
+                    model="annual_pcc_linear_trend + HFCE recent_yoy_growth + Denton",
+                    reason="PSA national per-capita availability is spatially allocated to provinces.",
+                    frequency="quarterly",
+                    source="psa_sua_population_hfce_denton",
+                    limitations=[
+                        "National PSA Onion per-capita availability is not observed provincial consumption.",
+                        "Broad food HFCE supplies quarterly timing only.",
+                    ],
+                )
+
         meta = self._registry.get(commodity, component)
         method = methodology.get(component, {}) if isinstance(methodology, dict) else {}
 

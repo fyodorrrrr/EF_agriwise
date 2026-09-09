@@ -87,6 +87,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
     ),
   },
   {
+    href: "/advisory",
+    label: "Market Advisory",
+    short: "Advisory",
+    group: "more",
+    icon: svg(
+      <>
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8z" />
+        <path d="M8 7h8M8 11h8M8 15h5" />
+      </>,
+    ),
+  },
+  {
     href: "/model-evidence",
     label: "Model Evidence",
     short: "Evidence",

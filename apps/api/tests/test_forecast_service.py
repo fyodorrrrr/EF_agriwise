@@ -135,15 +135,26 @@ def test_price_uses_the_learned_model_when_the_joblib_is_present():
     assert len(price.forecast) == 5
 
 
-def test_red_onion_supply_and_price_stay_value_free():
+def test_red_onion_synthetic_supply_and_price_are_served():
     payload = _real_service().outlook("Red Onion", "Batangas")
 
     for component in (payload.supply, payload.price):
-        assert component.verdict == "INSUFFICIENT_DATA"
-        assert component.observed is None
-        assert component.forecast is None
-    # ...but its demand proxy series is available.
+        assert component.verdict == "CAUTION"
+        assert component.observed and component.forecast
+        assert "Synthetic MVP" in component.limitations[0]
     assert payload.demand.forecast
+
+
+def test_red_onion_demand_evidence_uses_the_psa_physical_workflow():
+    evidence = _real_service().evidence()
+    red_onion = next(
+        item
+        for item in evidence
+        if item.commodity == "Red Onion" and item.component == "demand"
+    )
+
+    assert red_onion.target == "quarterly_demand_mt"
+    assert red_onion.source == "psa_sua_population_hfce_denton"
 
 
 def test_evidence_covers_all_twelve_components():

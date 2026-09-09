@@ -56,6 +56,7 @@ _CONFIG_FILES = {
 _MODELED_COMPONENTS: tuple[str, ...] = ("supply", "price")
 _DEMAND_PRESSURE_OBSERVED = "quarterly_demand_pressure_index.csv"
 _DEMAND_PRESSURE_FORECAST = "future_demand_pressure_3q.csv"
+_RED_ONION_PHYSICAL_DEMAND = "red_onion_demand_mt.csv"
 _METHODOLOGY_REL = Path(_REPORTS_DIR) / "methodology_registry.json"
 _REPORT_FILES = (
     "supply_deployment_verdicts",
@@ -121,6 +122,7 @@ class ArtifactRegistry:
         self._feature_tables: dict[tuple[str, str], pd.DataFrame] = {}
         self._demand_observed: pd.DataFrame = pd.DataFrame()
         self._demand_forecast: pd.DataFrame = pd.DataFrame()
+        self._red_onion_physical_demand: pd.DataFrame = pd.DataFrame()
         self._configs: dict[str, dict] = {}
         self._reports: dict[str, pd.DataFrame] = {}
         self._methodology: dict = {}
@@ -296,6 +298,9 @@ class ArtifactRegistry:
         forecast = self._read_csv(prepared / _DEMAND_PRESSURE_FORECAST)
         if forecast is not None:
             self._demand_forecast = forecast
+        physical_demand = self._read_csv(prepared / _RED_ONION_PHYSICAL_DEMAND)
+        if physical_demand is not None:
+            self._red_onion_physical_demand = physical_demand
 
     def _load_reports(self) -> None:
         reports = self._artifacts_dir / _REPORTS_DIR
@@ -404,6 +409,11 @@ class ArtifactRegistry:
     def demand_pressure_forecast(self) -> pd.DataFrame:
         """`prepared/future_demand_pressure_3q.csv` (empty frame if absent)."""
         return self._demand_forecast.copy()
+
+    @property
+    def red_onion_physical_demand(self) -> pd.DataFrame:
+        """PSA SUA/HFCE/Denton Red Onion quarterly demand, when deployed."""
+        return self._red_onion_physical_demand.copy()
 
     @property
     def opportunity_config(self) -> dict:

@@ -74,7 +74,7 @@ def _real_service() -> ForecastService:
     return ForecastService(ArtifactRegistry.load(_ARTIFACTS))
 
 
-def test_outlook_opportunity_scores_rice_and_fails_closed_for_red_onion():
+def test_outlook_opportunity_scores_rice_and_synthetic_red_onion():
     svc = _real_service()
 
     rice = svc.outlook("Rice", "Laguna").opportunity
@@ -90,5 +90,5 @@ def test_outlook_opportunity_scores_rice_and_fails_closed_for_red_onion():
     assert rice.shared_quarter and rice.breakdown and rice.weights_used
 
     red_onion = svc.outlook("Red Onion", "Batangas").opportunity
-    assert red_onion.verdict == "INSUFFICIENT_DATA"
-    assert red_onion.score is None
+    assert red_onion.verdict == "PASS"
+    assert red_onion.score is not None
