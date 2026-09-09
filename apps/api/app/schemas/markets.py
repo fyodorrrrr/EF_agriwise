@@ -19,6 +19,10 @@ class MarketRecord(BaseModel):
     coordinate_confidence: str
     source_url: str | None = None
     notes: str | None = None
+    market_description: str | None = None
+    contact_number: str | None = None
+    facebook_url: str | None = None
+    description_status_note: str | None = None
 
 
 class MarketListResponse(BaseModel):

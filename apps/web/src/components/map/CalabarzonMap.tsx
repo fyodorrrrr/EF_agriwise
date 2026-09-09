@@ -200,17 +200,46 @@ function useFeatureInteractions(
 // leave this element rendered at the page's max container width instead of
 // its actual (narrower, sidebar-adjacent) column, pushing the map, its
 // legends, and the market-detail panel outside the visible area.
-function useMapResize(mapRef: React.RefObject<LeafletMap | null>) {
+function useMapResize(mapRef: React.RefObject<LeafletMap | null>, ready: boolean) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasFitRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
     const parent = el?.parentElement;
     if (!el || !parent || typeof ResizeObserver === "undefined") return;
+    // `mapRef.current` is populated via react-leaflet's forwardedRef, which
+    // is wired through a `context` state update made *inside* the mount-time
+    // ref callback -- it isn't guaranteed to have flushed yet on this first
+    // effect run. `ready` (flipped by <MapContainer whenReady>, Leaflet's own
+    // "the map instance exists" signal) forces this effect to re-run once it
+    // truly does.
+    if (!ready) return;
 
     const sync = () => {
       el.style.width = `${parent.clientWidth}px`;
-      mapRef.current?.invalidateSize();
+      const map = mapRef.current;
+      if (!map) return;
+      // Leaflet measures its OWN container (map.getContainer(), a distinct
+      // element rendered by <MapContainer> one level inside `el`) to size
+      // itself -- that element hits the exact same stuck-at-container-full-
+      // width CSS issue independently of `el`, so it needs the same explicit
+      // pixel-width correction or Leaflet's fit/pan math runs against a
+      // canvas wider than what's actually visible.
+      map.getContainer().style.width = `${el.clientWidth}px`;
+      // The first correction can follow a mount-time fitBounds that ran
+      // against the stale (pre-sync) width -- invalidateSize()'s default
+      // pixel-delta pan would "preserve" that wrong center instead of
+      // re-centering on CALABARZON_BOUNDS. Re-fit once, then fall back to
+      // the normal resize behavior so later legitimate resizes (sidebar
+      // toggle, window resize) don't fight the user's own pan/zoom.
+      if (!hasFitRef.current) {
+        hasFitRef.current = true;
+        map.invalidateSize({ pan: false });
+        map.fitBounds(CALABARZON_BOUNDS, { animate: false });
+      } else {
+        map.invalidateSize();
+      }
     };
 
     const observer = new ResizeObserver(sync);
@@ -218,7 +247,7 @@ function useMapResize(mapRef: React.RefObject<LeafletMap | null>) {
     observer.observe(parent);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [mapRef]);
+  }, [mapRef, ready]);
 
   return containerRef;
 }
@@ -268,7 +297,8 @@ export default function CalabarzonMap({
   const error = region.error || province.error || municipality.error;
 
   const mapRef = useRef<LeafletMap | null>(null);
-  const resizeContainerRef = useMapResize(mapRef);
+  const [mapReady, setMapReady] = useState(false);
+  const resizeContainerRef = useMapResize(mapRef, mapReady);
   const [selectedMarket, setSelectedMarket] = useState<MarketRecord | null>(null);
 
   useEffect(() => {
@@ -384,6 +414,7 @@ export default function CalabarzonMap({
           minZoom={MIN_ZOOM}
           className="h-full w-full"
           scrollWheelZoom
+          whenReady={() => setMapReady(true)}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -558,6 +589,14 @@ export default function CalabarzonMap({
                 <span>
                   {selectedMarket.municipality}, {selectedMarket.province}
                 </span>
+                {selectedMarket.market_description && (
+                  <p>{selectedMarket.market_description}</p>
+                )}
+                {selectedMarket.description_status_note && (
+                  <p className="text-muted italic">
+                    {selectedMarket.description_status_note}
+                  </p>
+                )}
                 <span className="text-muted">
                   {selectedMarket.coordinate_confidence.toLowerCase()}-confidence coordinates
                 </span>
@@ -570,16 +609,34 @@ export default function CalabarzonMap({
                     {selectedMarket.operator}
                   </span>
                 )}
-                {selectedMarket.source_url && (
-                  <a
-                    href={selectedMarket.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-ghost btn-sm self-start text-xs"
-                  >
-                    View source →
-                  </a>
+                {selectedMarket.contact_number && (
+                  <span>
+                    <span className="font-medium text-ink">Contact: </span>
+                    {selectedMarket.contact_number}
+                  </span>
                 )}
+                <div className="flex flex-wrap gap-2">
+                  {selectedMarket.facebook_url && (
+                    <a
+                      href={selectedMarket.facebook_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-ghost btn-sm self-start text-xs"
+                    >
+                      Facebook page →
+                    </a>
+                  )}
+                  {selectedMarket.source_url && (
+                    <a
+                      href={selectedMarket.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-ghost btn-sm self-start text-xs"
+                    >
+                      View source →
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}

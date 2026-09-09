@@ -15,7 +15,7 @@ client = TestClient(create_app())
 
 
 def _registry() -> MarketRegistry:
-    if not (_ARTIFACTS / "market_coordinates" / "CALABARZON_market_coordinates.csv").is_file():
+    if not (_ARTIFACTS / "market_coordinates" / "CALABARZON_market_directory.csv").is_file():
         pytest.skip("market coordinates not present in this checkout")
     return MarketRegistry.load(_ARTIFACTS)
 
@@ -58,7 +58,7 @@ def test_full_kadiwa_registry_is_canonical_and_records_are_unique():
 def test_full_kadiwa_source_prevents_active_source_duplicates_and_skips_invalid_rows(tmp_path):
     coords = tmp_path / "market_coordinates"
     coords.mkdir()
-    (coords / "CALABARZON_market_coordinates.csv").write_text(
+    (coords / "CALABARZON_market_directory.csv").write_text(
         "market_id,market_name,municipality_city,province,latitude,longitude\n"
         "ORD-1,Ordinary,Calamba,Laguna,14.2,121.1\n"
     )

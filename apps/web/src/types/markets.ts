@@ -13,6 +13,10 @@ export interface MarketRecord {
   coordinate_confidence: string;
   source_url: string | null;
   notes: string | null;
+  market_description: string | null;
+  contact_number: string | null;
+  facebook_url: string | null;
+  description_status_note: string | null;
 }
 
 export interface MarketListResponse {
