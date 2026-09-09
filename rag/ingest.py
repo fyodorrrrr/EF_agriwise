@@ -19,7 +19,20 @@ DOC_TITLES: dict[str, str] = {
         "Explanatory Manual — PNS Code of GAP for Fruits and Vegetable Farming"
     ),
     "Farm_business_school_manual": "Farm Business School Manual",
-    "PAFES_manual_of_operations": "PAFES Manual of Operations",
+    "Banana-Production-Manual": "Banana Production Manual",
+    "PalayCheck-System-2022-Revised-Edition": "PalayCheck System (2022 Revised Edition)",
+    "Field-Guide_-Harmful-and-useful-organisms-in-Philippine-rice-fields-Insects-and-Non-insects": (
+        "Field Guide — Harmful and Useful Organisms in Philippine Rice Fields"
+    ),
+    "PNS_BAFS 49_2021 Code of GAP for Fruits and Vegetable Farming": (
+        "PNS/BAFS 49:2021 — Code of GAP for Fruits and Vegetable Farming"
+    ),
+    "PNS_BAFS 108_2014 Code of GAP for Onion Production": (
+        "PNS/BAFS 108:2014 — Code of GAP for Onion Production"
+    ),
+    "PNS_BAFS 129_2013 Code of GAP for Banana Production": (
+        "PNS/BAFS 129:2013 — Code of GAP for Banana Production"
+    ),
     "about-agriwise-analytics": "About the AgriWise Analytics",
 }
 

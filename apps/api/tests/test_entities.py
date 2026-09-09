@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.entities import extract_entities, wants_overview
+from app.entities import extract_entities, wants_markets, wants_overview
 
 
 @pytest.mark.parametrize(
@@ -29,3 +29,10 @@ def test_wants_overview_trigger_words():
     assert wants_overview("what is a good crop to plant this season") is True
     assert wants_overview("which province has the best opportunity") is True
     assert wants_overview("how do I compute gross margin") is False
+
+
+def test_wants_markets_trigger_words():
+    assert wants_markets("which markets are best for selling tomatoes") is True
+    assert wants_markets("saan ako pwede magbenta sa palengke") is True
+    assert wants_markets("where do I sell my rice") is True
+    assert wants_markets("how do I transplant rice seedlings") is False

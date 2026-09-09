@@ -91,20 +91,18 @@ def _opportunity_phrase(opp) -> str:
 
 
 def _grid_phrase(component, label: str, unit: str, fmt: str) -> str:
-    """Concise: last observed + full forecast series, for the grid rows."""
+    """Compact: latest value + the furthest forecast point. The full per-quarter
+    series lives in the focused block (``build_analytics_context``), not here."""
     if component.verdict == "INSUFFICIENT_DATA" or not (
         component.observed or component.forecast
     ):
         return f"{label} not available"
     parts = []
     if component.observed:
-        last = component.observed[-1]
-        parts.append(f"{last['value']:{fmt}}{unit} observed ({_period_label(last['period'])})")
+        parts.append(f"{component.observed[-1]['value']:{fmt}}{unit} now")
     if component.forecast:
-        series = "; ".join(
-            f"{_period_label(p['period'])} {p['value']:{fmt}}{unit}" for p in component.forecast
-        )
-        parts.append(f"forecast [{series}]")
+        nxt = component.forecast[-1]
+        parts.append(f"{nxt['value']:{fmt}}{unit} by {_period_label(nxt['period'])}")
     return f"{label} " + ", ".join(parts)
 
 
@@ -149,3 +147,52 @@ def build_full_grid_context(service: ForecastService) -> str | None:
         "a profit prediction. \"not available\" means no estimate exists — do not guess one."
     )
     return "\n".join([header, *rows])
+
+
+def build_markets_context(
+    registry,
+    service: ForecastService,
+    province: str | None,
+    commodity: str | None = None,
+) -> str | None:
+    """Top physical markets for a province — used when the farmer asks where to
+    sell. Needs a province; commodity only tunes the analytics-support weight."""
+    from markets.ranking import rank_markets
+
+    if registry is None or province not in PROVINCES:
+        return None
+
+    supported = 3
+    if commodity in COMMODITIES:
+        try:
+            outlook = service.outlook(commodity, province)
+            supported = sum(
+                1
+                for c in (outlook.demand, outlook.supply, outlook.price)
+                if c.verdict != "INSUFFICIENT_DATA"
+            )
+        except Exception:
+            pass
+
+    try:
+        ranked = rank_markets(
+            registry, province=province, supported_analytics=supported, limit=5
+        )
+    except Exception:
+        return None
+    if not ranked:
+        return None
+
+    lines = [
+        f"Top markets for {province} (score blends distance to the province centre, "
+        f"market size, and location-data quality — distance is straight-line, not travel "
+        f"time, and the score does not reflect the prices paid at that market):"
+    ]
+    for r in ranked:
+        where = (
+            f"{r.market.market_name}, {r.market.municipality}"
+            if r.market.municipality
+            else r.market.market_name
+        )
+        lines.append(f"- {where}: {r.score:.0f}/100, ~{r.distance_km:.0f} km")
+    return "\n".join(lines)

@@ -38,6 +38,10 @@ Proxy index (never as observed consumption or metric tonnes). Include the stated
 Do not compute new figures or extrapolate beyond the block.
 - If the analytics context marks something "not available" (for example Red Onion supply or \
 price, or an unavailable opportunity score), say it is not available and do not estimate it.
+- If a market ranking block is present you may recommend markets from it. Note that the \
+distance shown is straight-line from the province centre, not road travel time, and the \
+score reflects proximity, market size and location-data quality — not the prices paid at \
+that market.
 - Be concise, practical, and neutral."""
 
 
