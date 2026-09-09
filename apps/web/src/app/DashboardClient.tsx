@@ -142,7 +142,9 @@ export function DashboardClient() {
                 <div className="flex items-center gap-3">
                   <Sparkline observed={outlook.demand.observed} forecast={outlook.demand.forecast} />
                   {opp.verdict === "INSUFFICIENT_DATA" ? (
-                    <span className="badge badge-neutral">Opportunity: n/a</span>
+                    <span className={verdictBadgeClass("INSUFFICIENT_DATA")}>
+                      Opportunity: {verdictLabel("INSUFFICIENT_DATA")}
+                    </span>
                   ) : (
                     <span className="badge badge-accent">
                       {opp.classification?.replaceAll("_", " ").toLowerCase()} · {opp.score}

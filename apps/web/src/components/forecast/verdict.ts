@@ -9,11 +9,11 @@ const BADGE: Record<Verdict, string> = {
 };
 
 const LABEL: Record<Verdict, string> = {
-  PASS: "Pass",
-  USABLE_PROXY: "Usable proxy",
-  CAUTION: "Caution",
-  INDICATIVE_PROXY: "Indicative proxy",
-  INSUFFICIENT_DATA: "Insufficient data",
+  PASS: "Good Forecast",
+  USABLE_PROXY: "Estimated Demand",
+  CAUTION: "Planning Estimate",
+  INDICATIVE_PROXY: "Demand Trend",
+  INSUFFICIENT_DATA: "Not Enough Data",
 };
 
 export function verdictBadgeClass(verdict: Verdict): string {

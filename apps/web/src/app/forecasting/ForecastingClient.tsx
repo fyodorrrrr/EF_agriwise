@@ -242,7 +242,9 @@ function OpportunityCard({
       <div className="card flex flex-col gap-2">
         <div className="card-head">
           <span className="card-kicker">Opportunity</span>
-          <span className="badge badge-neutral">Insufficient data</span>
+          <span className={verdictBadgeClass("INSUFFICIENT_DATA")}>
+            {verdictLabel("INSUFFICIENT_DATA")}
+          </span>
         </div>
         <p className="state">
           A peer-relative opportunity score needs demand, supply, and price for every
