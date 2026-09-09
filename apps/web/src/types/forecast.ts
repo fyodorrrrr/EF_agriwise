@@ -67,6 +67,27 @@ export interface OutlookResponse {
   opportunity: OpportunityComponent;
 }
 
+export interface MunicipalOutlookRecord {
+  psgc_code: string;
+  municipality: string;
+  demand_weight: number;
+  demand_value: number;
+  demand_unit: string;
+  supply_weight: number;
+  supply_mt: number | null;
+  opportunity_score: number;
+  opportunity_classification: string;
+}
+
+export interface MunicipalOutlookResponse {
+  province: Province;
+  commodity: Commodity;
+  methodology: string;
+  demand_unit: string;
+  supply_unit: string;
+  municipalities: MunicipalOutlookRecord[];
+}
+
 export interface EvidenceComponent {
   commodity: Commodity;
   component: ForecastComponent;

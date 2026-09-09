@@ -5,7 +5,7 @@ import { MappingAnalytics } from "@/app/mapping/MappingAnalytics";
 import { AppPreferencesProvider } from "@/lib/preferences";
 import type { OutlookResponse } from "@/types/forecast";
 
-vi.mock("@/lib/forecast", () => ({ getOutlook: vi.fn() }));
+vi.mock("@/lib/forecast", () => ({ getMunicipalOutlook: vi.fn(), getOutlook: vi.fn() }));
 vi.mock("@/lib/markets", () => ({ listMarkets: vi.fn() }));
 vi.mock("@/components/map/MapPageClient", () => ({ MapPageClient: () => null }));
 import { getOutlook } from "@/lib/forecast";
