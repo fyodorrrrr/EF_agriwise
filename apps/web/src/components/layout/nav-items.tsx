@@ -87,13 +87,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     ),
   },
   {
-    href: "/chat",
-    label: "Ask AgriWise",
-    short: "Ask",
-    group: "primary",
-    icon: svg(<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z" />),
-  },
-  {
     href: "/model-evidence",
     label: "Model Evidence",
     short: "Evidence",

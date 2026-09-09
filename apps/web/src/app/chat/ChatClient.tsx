@@ -26,7 +26,7 @@ function pageLabel(c: Citation): string {
     : `${c.doc_title} — p.${c.page_start}-${c.page_end}`;
 }
 
-export default function ChatClient() {
+export default function ChatClient({ variant = "page" }: { variant?: "page" | "panel" }) {
   const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
   const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -76,103 +76,117 @@ export default function ChatClient() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8">
-      <h1 className="text-2xl font-semibold">Ask AgriWise</h1>
+    <div
+      className={
+        variant === "panel"
+          ? "flex h-full flex-col gap-3 p-3"
+          : "mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 sm:p-8"
+      }
+    >
+      {variant === "page" && <h1 className="text-2xl font-semibold">Ask AgriWise</h1>}
 
-      {isHydrated && (
-        <div className="flex flex-col gap-2">
+      <div
+        className={
+          variant === "panel"
+            ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+            : "flex flex-col gap-4"
+        }
+      >
+        {isHydrated && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted">
+              Optional — narrow answers to one commodity and province. Chat works fine without it.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <CommoditySelect value={preferences.commodity} onChange={setCommodity} />
+              <ProvinceSelect value={preferences.province} onChange={setProvince} />
+              {(preferences.commodity || preferences.province) && (
+                <button
+                  type="button"
+                  className="action"
+                  onClick={() => {
+                    setCommodity(null);
+                    setProvince(null);
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isHydrated && preferences.commodity && preferences.province && (
           <p className="text-xs text-muted">
-            Optional — narrow answers to one commodity and province. Chat works fine without it.
+            Answers can reference your current analytics selection:{" "}
+            <span className="font-medium">
+              {preferences.commodity} · {preferences.province}
+            </span>
+            .
           </p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <CommoditySelect value={preferences.commodity} onChange={setCommodity} />
-            <ProvinceSelect value={preferences.province} onChange={setProvince} />
-            {(preferences.commodity || preferences.province) && (
-              <button
-                type="button"
-                className="action"
-                onClick={() => {
-                  setCommodity(null);
-                  setProvince(null);
-                }}
-              >
-                Clear
-              </button>
-            )}
+        )}
+
+        {messages.length === 0 && (
+          <div className="card flex flex-col gap-2">
+            <p className="text-sm text-muted">
+              Ask about the DA farm-business and good-agricultural-practice manuals.
+            </p>
+            <div className="chip-group">
+              {EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  className="chip text-left"
+                  onClick={() => setInput(ex)}
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {isHydrated && preferences.commodity && preferences.province && (
-        <p className="text-xs text-muted">
-          Answers can reference your current analytics selection:{" "}
-          <span className="font-medium">
-            {preferences.commodity} · {preferences.province}
-          </span>
-          .
-        </p>
-      )}
-
-      {messages.length === 0 && (
-        <div className="card flex flex-col gap-2">
-          <p className="text-sm text-muted">
-            Ask about the DA farm-business and good-agricultural-practice manuals.
-          </p>
-          <div className="chip-group">
-            {EXAMPLES.map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                className="chip text-left"
-                onClick={() => setInput(ex)}
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <ul className="flex flex-col gap-3">
-        {messages.map((m, i) => (
-          <li
-            key={i}
-            className={`flex max-w-[92%] flex-col sm:max-w-[80%] ${
-              m.role === "user" ? "items-end self-end text-right" : "items-start self-start"
-            }`}
-          >
-            <div
-              className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm [overflow-wrap:anywhere] ${
-                m.role === "user" ? "bg-accent-500 text-on-accent" : "bg-sunken text-body"
+        <ul className="flex flex-col gap-3">
+          {messages.map((m, i) => (
+            <li
+              key={i}
+              className={`flex max-w-[92%] flex-col sm:max-w-[80%] ${
+                m.role === "user" ? "items-end self-end text-right" : "items-start self-start"
               }`}
             >
-              {m.content}
-            </div>
-            {m.citations && m.citations.length > 0 && (
-              <ul className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">
-                {m.citations.map((c, j) => (
-                  <li key={j}>{pageLabel(c)}</li>
-                ))}
-              </ul>
-            )}
-            {m.contextUsed && (
-              <p className="mt-1 text-xs text-muted">
-                Used your current {preferences.commodity} / {preferences.province} analytics.
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
+              <div
+                className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm [overflow-wrap:anywhere] ${
+                  m.role === "user" ? "bg-accent-500 text-on-accent" : "bg-sunken text-body"
+                }`}
+              >
+                {m.content}
+              </div>
+              {m.citations && m.citations.length > 0 && (
+                <ul className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">
+                  {m.citations.map((c, j) => (
+                    <li key={j}>{pageLabel(c)}</li>
+                  ))}
+                </ul>
+              )}
+              {m.contextUsed && (
+                <p className="mt-1 text-xs text-muted">
+                  Used your current {preferences.commodity} / {preferences.province} analytics.
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
 
-      {pending && <p className="state state-loading">Thinking…</p>}
-      {error && (
-        <p className="state state-error">
-          {error}{" "}
-          <button type="button" className="action" onClick={retry}>
-            Try again
-          </button>
-        </p>
-      )}
+        {pending && <p className="state state-loading">Thinking…</p>}
+        {error && (
+          <p className="state state-error">
+            {error}{" "}
+            <button type="button" className="action" onClick={retry}>
+              Try again
+            </button>
+          </p>
+        )}
+      </div>
 
       <form
         data-testid="chat-form"
