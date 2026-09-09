@@ -78,7 +78,7 @@ export function ForecastingClient() {
   if (!isHydrated) return null;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="page-container flex flex-col gap-4">
       <div className="page-head">
         <div>
           <h1>Forecasting</h1>
@@ -147,7 +147,7 @@ export function ForecastingClient() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-6">
+                <div className="grid gap-6 xl:grid-cols-2">
                   {(["demand", "supply", "price"] as const).map((kind) => (
                     <div key={kind} className="card flex flex-col gap-3">
                       <ComponentCard kind={kind} component={outlook[kind]} detailed />

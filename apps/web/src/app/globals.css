@@ -94,10 +94,11 @@
   /* — layout — */
   --container-narrow: 448px;
   --container-reading: 672px;
-  --container-page: 896px;
-  --container-wide: 1024px;
-  --container-full: 1200px;
+  --container-page: 1200px;
+  --container-wide: 1440px;
+  --container-full: 1600px;
   --spacing-sidebar: 224px;
+  --spacing-sidebar-collapsed: 72px;
   --spacing-aside: 320px;
   --spacing-nav-bar: 58px; /* mobile bottom tab bar, sans safe-area inset */
 
@@ -334,6 +335,9 @@
   .table-wrap { overflow-x: auto; border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 
   /* — page header — */
+  .page-container { width: min(100%, var(--container-page)); margin-inline: auto; }
+  .page-container-wide { width: min(100%, var(--container-wide)); margin-inline: auto; }
+  .page-container-full { width: min(100%, var(--container-full)); margin-inline: auto; }
   .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
   .page-head h1 { font-size: var(--text-xl); font-weight: 700; margin: 0; }
   .page-head p { margin: 8px 0 0; font-size: var(--text-sm); color: var(--color-muted); max-width: 72ch; text-wrap: pretty; }
@@ -348,6 +352,7 @@
     width: var(--spacing-sidebar); height: 100dvh; flex-shrink: 0;
     padding: 16px; background: var(--color-surface);
     border-right: 1px solid var(--color-line);
+    transition: width .2s ease, padding .2s ease;
   }
   .sidebar-brand {
     display: inline-flex; align-items: center; gap: 1px;
@@ -358,6 +363,15 @@
   .sidebar-brand:hover { color: var(--color-accent-800); }
   /* The leaf mark stands in for the "A" — sized to cap height, nudged to sit on the baseline. */
   .brand-mark { height: 1.15em; width: auto; transform: translateY(0.02em); }
+  .sidebar-toggle {
+    position: absolute; top: 18px; right: -14px; z-index: 2;
+    display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+    border: 1px solid var(--color-line); border-radius: 999px;
+    color: var(--color-neutral-600); background: var(--color-surface);
+    box-shadow: var(--shadow-sm); cursor: pointer;
+  }
+  .sidebar-toggle:hover { color: var(--color-accent-700); background: var(--color-accent-100); }
+  .sidebar-toggle svg { width: 15px; height: 15px; transition: transform .2s ease; }
   .sidenav { display: flex; flex-direction: column; gap: 4px; }
   .sidenav-item {
     display: flex; align-items: center; gap: 12px;
@@ -377,6 +391,18 @@
   .sidenav-item:hover svg,
   .sidenav-item[aria-current='page'] svg { color: currentColor; }
   .sidenav-item .sidenav-short { display: none; }
+
+  @media (min-width: 768px) {
+    .sidebar[data-collapsed='true'] {
+      width: var(--spacing-sidebar-collapsed);
+      padding-inline: 12px;
+    }
+    .sidebar[data-collapsed='true'] .sidebar-brand { justify-content: center; padding-inline: 0; }
+    .sidebar[data-collapsed='true'] .sidebar-brand-word,
+    .sidebar[data-collapsed='true'] .sidenav-full { display: none; }
+    .sidebar[data-collapsed='true'] .sidenav-item { justify-content: center; gap: 0; padding-inline: 9px; }
+    .sidebar[data-collapsed='true'] .sidebar-toggle svg { transform: rotate(180deg); }
+  }
 
   /* Overflow "More" tab + sheet — mobile only; the desktop rail lists every item. */
   .sidenav-more { display: none; position: relative; }
@@ -504,6 +530,7 @@
     border-top: 1px solid var(--color-divider);
   }
   .sidebar-brand { display: none; }
+  .sidebar-toggle { display: none; }
 
   .sidenav { flex: 1; flex-direction: row; align-items: stretch; gap: 2px; }
   .sidenav-item[data-group='more'] { display: none; } /* reachable via the More sheet */
@@ -585,7 +612,7 @@
 @media (prefers-reduced-motion: reduce) {
   .state-loading::before, .skeleton, .brand-loader img { animation: none; }
   .sidenav-sheet, .fab-panel, .typing-dots span { animation: none; }
-  .skip-link, .fab { transition: none; }
+  .skip-link, .fab, .sidebar, .sidebar-toggle svg { transition: none; }
 }
 
 /* ══ leaflet markers ═══════════════════════════════════════════════════

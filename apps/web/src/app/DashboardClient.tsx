@@ -113,7 +113,7 @@ export function DashboardClient() {
   if (!isHydrated) return null;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="page-container-wide flex flex-col gap-4">
       <div className="page-head">
         <div>
           <h1>{province ? `${province} Outlook` : "CALABARZON Outlook"}</h1>
@@ -179,7 +179,7 @@ export function DashboardClient() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
                 {(["demand", "supply", "price"] as const).map((kind) => (
                   <div key={kind} className="flex flex-col gap-2">
                     <span className="card-kicker">{DASHBOARD_METRIC_LABELS[kind]}</span>
