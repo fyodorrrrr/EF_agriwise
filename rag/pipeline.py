@@ -109,7 +109,8 @@ class RagPipeline:
 
         # Nothing relevant and not a greeting → out of scope. Answer deterministically
         # without spending a generation call (also blocks code/homework/injection asks).
-        if not smalltalk and not retrieved:
+        # Analytics context is its own grounding, so keep going when it is present.
+        if not smalltalk and not retrieved and not analytics_context:
             return RagAnswer(answer=OUT_OF_SCOPE_ANSWER, citations=[], used_chunk_ids=[])
 
         messages = build_messages(

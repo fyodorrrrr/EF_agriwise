@@ -29,3 +29,6 @@ class RagQueryResponse(BaseModel):
     answer: str
     citations: list[Citation]
     analytics_context_used: bool = False
+    # Human-readable scope of the analytics used, e.g. "Rice · Laguna",
+    # "Tomato · all provinces", "CALABARZON overview". None when unused.
+    analytics_scope: str | None = None
