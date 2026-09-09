@@ -10,6 +10,7 @@ import { ComponentCard } from "@/components/forecast/ComponentCard";
 import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { WhyThisResult } from "@/components/forecast/WhyThisResult";
 import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
+import { classificationLabel, opportunityFactorLabel } from "@/components/forecast/glossary";
 import { COMMODITIES } from "@/lib/domain";
 import { getMethodology, getOutlook } from "@/lib/forecast";
 import { usePreferences } from "@/lib/preferences";
@@ -269,10 +270,8 @@ function OpportunityCard({
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-2xl font-bold">{opp.score}</span>
-        <span className="badge badge-accent">
-          {opp.classification?.replaceAll("_", " ").toLowerCase()}
-        </span>
+        <span className="text-2xl font-bold">{Math.round(opp.score ?? 0)} out of 100</span>
+        <span className="badge badge-accent">{classificationLabel(opp.classification)}</span>
         {opp.shared_quarter && (
           <span className="text-xs text-muted">
             shared quarter {formatQuarter(opp.shared_quarter)}
@@ -292,7 +291,7 @@ function OpportunityCard({
           <tbody>
             {Object.entries(opp.breakdown).map(([key, entry]) => (
               <tr key={key}>
-                <td className="py-0.5">{key.replaceAll("_", " ")}</td>
+                <td className="py-0.5">{opportunityFactorLabel(key)}</td>
                 <td className="text-right">{(entry.weight * 100).toFixed(0)}%</td>
                 <td className="text-right">{entry.score.toFixed(0)}</td>
               </tr>
@@ -300,6 +299,10 @@ function OpportunityCard({
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-muted">
+        Each score (0–100) is this province&apos;s rank against the other four for that
+        factor — 100 is the highest among the five, not &ldquo;100%&rdquo;.
+      </p>
 
       <WhyThisResult
         kind="opportunity"

@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import CalabarzonMap, {
@@ -50,23 +50,42 @@ vi.mock("react-leaflet", () => {
     <div data-layer-name={name}>{children}</div>
   );
   const LayersControl = Object.assign(Container, { Overlay });
-  const MapContainer = forwardRef<unknown, { children?: ReactNode }>(({ children }, _ref) => (
-    <div>{children}</div>
-  ));
+  const MapContainer = forwardRef<unknown, { children?: ReactNode }>(function MapContainer(
+    { children },
+    ref,
+  ) {
+    return <div ref={ref as React.Ref<HTMLDivElement>}>{children}</div>;
+  });
   return {
     GeoJSON: Container,
     LayerGroup: Container,
     LayersControl,
     MapContainer,
-    Marker: ({ children, position, pane }: { children?: ReactNode; position: [number, number]; pane?: string }) => (
-      <div data-market-position={position.join(",")} data-market-pane={pane}>{children}</div>
+    Marker: ({
+      children,
+      position,
+      pane,
+      eventHandlers,
+    }: {
+      children?: ReactNode;
+      position: [number, number];
+      pane?: string;
+      eventHandlers?: { click?: () => void };
+    }) => (
+      <div
+        data-market-position={position.join(",")}
+        data-market-pane={pane}
+        onClick={eventHandlers?.click}
+      >
+        {children}
+      </div>
     ),
     Pane: ({ children, name }: { children?: ReactNode; name?: string }) => (
       <div data-pane-name={name}>{children}</div>
     ),
-    Popup: Container,
     TileLayer: Container,
     Tooltip: Container,
+    useMapEvents: () => null,
   };
 });
 
@@ -99,6 +118,7 @@ describe("CalabarzonMap", () => {
         heatmapUnit="index (base~100)"
         heatmapMin={72}
         heatmapMax={72}
+        heatPalette="default"
       />,
     );
 
@@ -108,6 +128,12 @@ describe("CalabarzonMap", () => {
     expect(screen.getAllByText(/Biñan, Laguna/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Public Market/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/High-confidence coordinates/i).length).toBeGreaterThan(0);
+
+    // Heatmap legend explains what each color band means, not just the numeric range.
+    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("Moderate")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("Very High")).toBeInTheDocument();
   });
 
   it("distinguishes KADIWA marker types and keeps their layer separate", async () => {
@@ -145,18 +171,25 @@ describe("CalabarzonMap", () => {
         heatmapUnit="index (base~100)"
         heatmapMin={72}
         heatmapMax={72}
+        heatPalette="goodHigh"
       />,
     );
 
     await waitFor(() => expect(screen.getAllByText("KADIWA - LARES").length).toBeGreaterThan(0));
-    expect(screen.getByText("Operator")).toBeInTheDocument();
-    expect(screen.getByText("DA CALABARZON")).toBeInTheDocument();
-    expect(screen.getByText("View official source")).toBeInTheDocument();
-    expect(screen.getByText("Every Monday")).toBeInTheDocument();
     expect(document.querySelector('[data-layer-name="Ordinary Markets (1)"]')).not.toBeNull();
     expect(document.querySelector('[data-layer-name="KADIWA Markets (1)"]')).not.toBeNull();
     expect(document.querySelector('[data-pane-name="market-markers"]')).not.toBeNull();
     expect(document.querySelector('[data-market-position="14.2,121.1"]')).toHaveAttribute("data-market-pane", "market-markers");
     expect(document.querySelector('[data-market-position="13.9588,121.1662"]')).toHaveAttribute("data-market-pane", "market-markers");
+
+    // Clicking a marker opens the slide-in detail card with the fields that used to
+    // live in the removed Leaflet Popup.
+    const kadiwaMarker = document.querySelector('[data-market-position="13.9588,121.1662"]');
+    fireEvent.click(kadiwaMarker as Element);
+
+    await waitFor(() => expect(screen.getByText("DA CALABARZON")).toBeInTheDocument());
+    expect(screen.getByText(/Operator/)).toBeInTheDocument();
+    expect(screen.getByText(/View source/i)).toBeInTheDocument();
+    expect(screen.getByText("Every Monday")).toBeInTheDocument();
   });
 });

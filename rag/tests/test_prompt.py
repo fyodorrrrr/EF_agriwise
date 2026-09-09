@@ -19,6 +19,7 @@ def test_system_prompt_first_and_rules_present():
     assert "do not" in lowered  # refusal / no-outside-knowledge language
     assert "estimated demand proxy" in lowered  # analytics-labelling rule
     assert "not available" in lowered  # refuse-to-estimate rule
+    assert "greets you" in lowered  # small-talk / greeting rule
 
 
 def test_citation_tags_use_page_ranges():

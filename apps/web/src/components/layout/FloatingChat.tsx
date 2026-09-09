@@ -58,7 +58,16 @@ export function FloatingChat() {
         data-testid="chat-panel"
       >
         <div className="fab-panel-head">
-          <span className="fab-panel-title">Ask AgriWise</span>
+          <div className="fab-panel-id">
+            <span className="fab-panel-avatar" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element -- tiny static brand mark */}
+              <img src="/brand/agriwise-mark-white.png" alt="" />
+            </span>
+            <span className="fab-panel-titles">
+              <span className="fab-panel-title">AgriWise</span>
+              <span className="fab-panel-subtitle">DA farm-business &amp; GAP manuals</span>
+            </span>
+          </div>
           <button type="button" className="btn btn-ghost btn-icon" aria-label="Close chat" onClick={close}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -79,7 +88,21 @@ export function FloatingChat() {
         aria-label="Ask AgriWise"
         onClick={() => setOpen((v) => !v)}
       >
-        <img className="fab-mark" src="/brand/agriwise-mark-white.png" alt="" aria-hidden="true" />
+        {open ? (
+          <svg className="fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        ) : (
+          <>
+            <svg className="fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 11.5a8.5 8.5 0 0 1-12.8 7.3L3 20.5l1.7-5.2A8.5 8.5 0 1 1 21 11.5Z" />
+              <circle cx="8.5" cy="12" r="1" fill="currentColor" stroke="none" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+              <circle cx="15.5" cy="12" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            <span className="fab-label">Ask AgriWise</span>
+          </>
+        )}
       </button>
     </>
   );

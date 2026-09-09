@@ -40,25 +40,35 @@ function outlook(commodity: string): OutlookResponse {
       metrics: {},
     },
     price: {
-      verdict: "INSUFFICIENT_DATA",
-      observed: null,
-      forecast: null,
-      unit: null,
-      frequency: null,
-      confidence: null,
-      source: null,
-      data_as_of: null,
+      verdict: "PASS",
+      observed: [{ period: "2026-07-01", value: 18.5 }],
+      forecast: [{ period: "2026-08-01", value: 19.3 }],
+      unit: "PHP/kg",
+      frequency: "monthly",
+      confidence: "HIGH",
+      source: "learned_model:hist_gradient_boosting",
+      data_as_of: "2026-07-01",
       label: null,
       limitations: [],
       metrics: {},
     },
     opportunity: {
       verdict: "PASS",
-      score: 55.4,
-      classification: "BALANCED",
+      score: 28.98,
+      classification: "OVERSUPPLY_LEANING",
       shared_quarter: "2026-07-01",
-      breakdown: {},
-      weights_used: {},
+      breakdown: {
+        demand_pressure_index: { raw: 104, score: 0, weight: 0.389 },
+        supply_gap_or_scarcity_index: { raw: 4653, score: 75, weight: 0.278 },
+        price_opportunity_index: { raw: 19.3, score: 0, weight: 0.222 },
+        forecast_confidence_index: { raw: 73.3, score: 73.3, weight: 0.111 },
+      },
+      weights_used: {
+        demand_pressure_index: 0.389,
+        supply_gap_or_scarcity_index: 0.278,
+        price_opportunity_index: 0.222,
+        forecast_confidence_index: 0.111,
+      },
     },
   };
 }
@@ -95,8 +105,29 @@ describe("Dashboard", () => {
     await waitFor(() => expect(screen.getAllByText("Rice").length).toBeGreaterThan(0));
     expect(screen.getAllByText("Tomato").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Banana").length).toBeGreaterThan(0);
-    // opportunity classification surfaces on the card
-    expect(screen.getAllByText(/balanced · 55.4/i).length).toBe(4);
+    expect(screen.getAllByText(/more supply likely · 29/i)).toHaveLength(4);
+    expect(screen.queryByRole("region", { name: /opportunity summary/i })).toBeNull();
+    expect(screen.queryByText("Overall result")).toBeNull();
+    expect(screen.queryByRole("table", { name: /opportunity breakdown/i })).toBeNull();
+    expect(screen.getAllByText("104 demand index")).toHaveLength(4);
+    expect(screen.getAllByText("4,653 metric tons")).toHaveLength(4);
+    expect(screen.getAllByText("19.3 pesos per kilogram")).toHaveLength(4);
+    expect(screen.getAllByText("Estimated demand")).toHaveLength(4);
+    expect(screen.getAllByText("Available supply")).toHaveLength(4);
+    expect(screen.getAllByText("Farmgate price")).toHaveLength(4);
+    expect(screen.queryByText("Estimated Demand Proxy")).toBeNull();
+    expect(screen.getAllByText("Data period: Quarter 3, 2026")).toHaveLength(4);
+    expect(screen.getByText("Average opportunity score")).toBeVisible();
+    expect(screen.queryByText("Avg opportunity score")).toBeNull();
+    expect(
+      screen.queryByText(/demand, supply, and price signals here are roughly in line/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/the opportunity score above is the closest combined signal/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("What do these numbers mean?")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("What does this score mean?")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("What is Estimated Demand Proxy?")).not.toBeInTheDocument();
   });
 
   it("shows an error state and no stale rows when the service fails", async () => {

@@ -1,12 +1,7 @@
 import type { OutlookComponent } from "@/types/forecast";
 import { Sparkline } from "@/components/forecast/Sparkline";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
-
-const TITLE: Record<string, string> = {
-  demand: "Demand",
-  supply: "Supply",
-  price: "Price",
-};
+import { METRIC_INFO, confidenceLabel } from "@/components/forecast/glossary";
 
 function latest(component: OutlookComponent): number | null {
   const series = component.forecast?.length
@@ -28,13 +23,13 @@ export function ComponentCard({
 }) {
   const insufficient = component.verdict === "INSUFFICIENT_DATA";
   const value = latest(component);
-  const label = kind === "demand" ? "Estimated Demand Proxy" : TITLE[kind];
+  const info = METRIC_INFO[kind];
 
   return (
     <div className="card flex flex-col gap-2">
       <div className="card-head">
         <div>
-          <span className="card-kicker">{label}</span>
+          <span className="card-kicker">{info.label}</span>
           {detailed && component.label && (
             <p className="text-xs text-muted">{component.label}</p>
           )}
@@ -67,7 +62,7 @@ export function ComponentCard({
             {component.confidence && (
               <>
                 <dt>Confidence</dt>
-                <dd className="text-right">{component.confidence}</dd>
+                <dd className="text-right">{confidenceLabel(component.confidence)}</dd>
               </>
             )}
             {component.source && (

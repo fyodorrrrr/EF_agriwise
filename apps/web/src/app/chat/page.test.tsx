@@ -68,6 +68,7 @@ describe("ChatPage", () => {
       answer: "Rice demand is up.",
       citations: [],
       analytics_context_used: true,
+      analytics_scope: "Rice · Laguna",
     });
     renderChat();
     ask("how is rice demand?");
@@ -77,7 +78,9 @@ describe("ChatPage", () => {
       commodity: "Rice",
       province: "Laguna",
     });
-    expect(screen.getByText(/used your current rice \/ laguna analytics/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/answer used agriwise analytics — rice · laguna/i),
+    ).toBeInTheDocument();
   });
 
   it("disables input while pending", async () => {

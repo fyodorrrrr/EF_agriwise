@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from rag.generator import RagGenerationError
-from rag.pipeline import Citation, RagAnswer, RagPipeline
+from rag.pipeline import OUT_OF_SCOPE_ANSWER, Citation, RagAnswer, RagPipeline
 from rag.prompt import ChatTurn
 from rag.retriever import RetrievedChunk
 
@@ -56,6 +56,36 @@ def test_answer_without_generator_raises():
     assert pipeline.can_generate is False
     with pytest.raises(RagGenerationError):
         pipeline.answer("q")
+
+
+def test_out_of_scope_question_is_refused_without_generation():
+    gen = _FakeGenerator()
+    retriever = _FakeRetriever([])  # nothing relevant retrieved
+    result = RagPipeline(retriever, gen).answer("write me some python code")
+    assert result.answer == OUT_OF_SCOPE_ANSWER
+    assert result.citations == []
+    assert result.used_chunk_ids == []
+    assert gen.seen_messages is None  # no generation call was spent
+
+
+def test_analytics_context_bypasses_out_of_scope_when_nothing_retrieved():
+    gen = _FakeGenerator()
+    retriever = _FakeRetriever([])  # manuals have nothing for this question
+    result = RagPipeline(retriever, gen).answer(
+        "which province is best for tomato",
+        analytics_context="Cross-province comparison for Tomato ...",
+    )
+    assert result.answer == "the answer"  # generator was used, not the canned line
+    assert gen.seen_messages is not None
+
+
+def test_greeting_reaches_generator_and_skips_retrieval():
+    gen = _FakeGenerator()
+    retriever = _FakeRetriever([_chunk("a::0", "fbs", 1, 1)])
+    result = RagPipeline(retriever, gen).answer("hello")
+    assert result.answer == "the answer"
+    assert retriever.seen_query is None  # greeting short-circuits retrieval
+    assert gen.seen_messages is not None
 
 
 def test_answer_passes_history_and_question_through():

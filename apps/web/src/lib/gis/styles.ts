@@ -24,13 +24,42 @@ export function selectedBoundaryStyle(level: BoundaryLevel): BoundaryStyle {
   return { ...base, color: "#000000", weight: base.weight + 2, fillOpacity: 0.18 };
 }
 
-const HEAT_COLORS = ["#fde68a", "#fbbf24", "#f97316", "#dc2626"] as const;
+// "default": low->high, amber->red (Demand proxy -- no inherent good/bad direction).
+// "goodHigh": low->high, red->green (Opportunity, Supply -- higher is better).
+const HEAT_PALETTES = {
+  default: ["#fde68a", "#fbbf24", "#f97316", "#dc2626"],
+  goodHigh: ["#dc2626", "#f97316", "#facc15", "#16a34a"],
+} as const;
+export type HeatPalette = keyof typeof HEAT_PALETTES;
+
 const NO_DATA_COLOR = "#d6d3d1";
 
 /** Relative province color for the currently selected commodity and metric. */
-export function heatColor(value: number | null, min: number, max: number): string {
+export function heatColor(
+  value: number | null,
+  min: number,
+  max: number,
+  palette: HeatPalette = "default",
+): string {
   if (value === null || !Number.isFinite(value)) return NO_DATA_COLOR;
   const ratio = max === min ? 0.5 : Math.max(0, Math.min(1, (value - min) / (max - min)));
   const index = ratio <= 0.25 ? 0 : ratio <= 0.5 ? 1 : ratio <= 0.75 ? 2 : 3;
-  return HEAT_COLORS[index];
+  return HEAT_PALETTES[palette][index];
+}
+
+/** CSS gradient string for the legend bar, sharing the same palette as heatColor(). */
+export function heatGradientCss(palette: HeatPalette = "default"): string {
+  return `linear-gradient(90deg, ${HEAT_PALETTES[palette].join(", ")})`;
+}
+
+const BUCKET_LABELS = ["Low", "Moderate", "High", "Very High"] as const;
+
+export interface HeatBucket {
+  color: string;
+  label: string;
+}
+
+/** The 4 discrete color+label buckets for a palette (low->high), for legend rendering. */
+export function heatBuckets(palette: HeatPalette = "default"): HeatBucket[] {
+  return HEAT_PALETTES[palette].map((color, i) => ({ color, label: BUCKET_LABELS[i] }));
 }

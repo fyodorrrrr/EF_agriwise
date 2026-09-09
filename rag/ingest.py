@@ -20,7 +20,12 @@ DOC_TITLES: dict[str, str] = {
     ),
     "Farm_business_school_manual": "Farm Business School Manual",
     "PAFES_manual_of_operations": "PAFES Manual of Operations",
+    "about-agriwise-analytics": "About the AgriWise Analytics",
 }
+
+# Markdown sources are split into "pages" on level-2 (`## `) headings so a
+# citation points at a named section rather than the whole file.
+_MD_SECTION = re.compile(r"\n(?=## )")
 
 _HYPHEN_BREAK = re.compile(r"(\w)-\n(\w)")
 _INLINE_WS = re.compile(r"[ \t]+")
@@ -48,12 +53,25 @@ def strip_running_lines(text: str, running: set[str]) -> str:
     return "\n".join(kept).strip()
 
 
-def extract_pages(pdf_path: Path) -> list[PageText]:
+def _markdown_pages(path: Path, doc_id: str, title: str) -> list[PageText]:
+    raw = path.read_text(encoding="utf-8")
+    sections = [s.strip() for s in _MD_SECTION.split(raw) if s.strip()]
+    return [
+        PageText(doc_id=doc_id, doc_title=title, page_number=i, text=section)
+        for i, section in enumerate(sections, start=1)
+    ]
+
+
+def extract_pages(path: Path) -> list[PageText]:
+    doc_id = path.stem
+    title = DOC_TITLES.get(doc_id, doc_id)
+
+    if path.suffix.lower() in {".md", ".markdown"}:
+        return _markdown_pages(path, doc_id, title)
+
     from pypdf import PdfReader
 
-    doc_id = pdf_path.stem
-    title = DOC_TITLES.get(doc_id, doc_id)
-    reader = PdfReader(str(pdf_path))
+    reader = PdfReader(str(path))
     return [
         PageText(doc_id=doc_id, doc_title=title, page_number=i, text=page.extract_text() or "")
         for i, page in enumerate(reader.pages, start=1)
@@ -92,9 +110,13 @@ def ingest(
     from rag.embeddings import Embedder
     from rag.store import ChunkStore
 
-    paths = sources if sources is not None else sorted(RAW_DIR.glob("*.pdf"))
+    paths = (
+        sources
+        if sources is not None
+        else sorted([*RAW_DIR.glob("*.pdf"), *RAW_DIR.glob("*.md")])
+    )
     if not paths:
-        raise SystemExit(f"no PDFs found in {RAW_DIR}")
+        raise SystemExit(f"no source documents found in {RAW_DIR}")
 
     cfg.index_dir.mkdir(parents=True, exist_ok=True)
     embedder = Embedder(cfg.embedding_model)

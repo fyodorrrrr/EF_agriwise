@@ -1,4 +1,12 @@
 import type { OpportunityComponent, OutlookComponent } from "@/types/forecast";
+import {
+  NO_SUPPLY_DEMAND_RATIO,
+  OPPORTUNITY_SCORE_EXPLAINER,
+  VERDICT_MEANING,
+  classificationMeaning,
+  confidenceLabel,
+} from "@/components/forecast/glossary";
+import { verdictLabel } from "@/components/forecast/verdict";
 
 function coverage(component: OutlookComponent): string | null {
   const obs = component.observed ?? [];
@@ -36,7 +44,14 @@ export function WhyThisResult({
         Why this result?
       </summary>
       <dl className="mt-2 flex flex-col gap-0.5 border-l-2 border-[var(--color-divider)] pl-3">
-        <Row label="Verdict" value={component.verdict.replaceAll("_", " ")} />
+        <Row label="Verdict" value={verdictLabel(component.verdict)} />
+        <Row label="What that means" value={VERDICT_MEANING[component.verdict]} />
+        {isOutlook && kind === "demand" && (
+          <Row
+            label="Is this a percentage?"
+            value="No — it's an index where about 100 is a typical level, not a percent and not metric tons."
+          />
+        )}
         {isOutlook && (
           <>
             <Row
@@ -47,11 +62,14 @@ export function WhyThisResult({
                   : (component as OutlookComponent).source === "seasonal_naive"
                     ? "seasonal-naive fallback (no deployable model)"
                     : (component as OutlookComponent).source === "demand_pressure_index"
-                      ? "committed demand-pressure index (FIES baseline + LFS activity + seasonal indices)"
+                      ? "a demand-pressure index built from national household spending and employment survey data, plus seasonal patterns"
                       : (component as OutlookComponent).source
               }
             />
-            <Row label="Confidence" value={(component as OutlookComponent).confidence} />
+            <Row
+              label="Confidence"
+              value={confidenceLabel((component as OutlookComponent).confidence)}
+            />
             <Row label="Frequency" value={(component as OutlookComponent).frequency} />
             <Row label="Data coverage" value={coverage(component as OutlookComponent)} />
             <Row
@@ -70,6 +88,12 @@ export function WhyThisResult({
               label="Shared quarter"
               value={(component as OpportunityComponent).shared_quarter}
             />
+            <Row label="What the score means" value={OPPORTUNITY_SCORE_EXPLAINER} />
+            <Row
+              label="What this band means"
+              value={classificationMeaning((component as OpportunityComponent).classification)}
+            />
+            <Row label="Why not a supply/demand ratio?" value={NO_SUPPLY_DEMAND_RATIO} />
           </>
         )}
         <Row label="Province resolution" value="province (not municipality)" />
