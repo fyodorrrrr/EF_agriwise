@@ -1,0 +1,5 @@
+﻿dataset_id,title,url,file,rows,columns,status,error
+0032M4AFN01,"Cereals: Farmgate Prices by Geolocation, Commodity, Year and Period",https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/2M/NFG/0032M4AFN01.px,"psa_price_downloads\Cereals- Farmgate Prices by Geolocation, Commodity, Year and Period.csv",11322,223,SUCCESS,
+0032M4AFN04,"Condiments: Farmgate Prices by Geolocation, Commodity, Year and Period",https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/2M/NFG/0032M4AFN04.px,"psa_price_downloads\Condiments- Farmgate Prices by Geolocation, Commodity, Year and Period.csv",22644,223,SUCCESS,
+0032M4AFN05,"Fruit Vegetables: Farmgate Prices by Geolocation, Commodity, Year and Period",https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/2M/NFG/0032M4AFN05.px,"psa_price_downloads\Fruit Vegetables- Farmgate Prices by Geolocation, Commodity, Year and Period.csv",28305,223,SUCCESS,
+0032M4AFN07,"Fruits: Farmgate Prices by Commodity, by Region and Province, Monthly, 2010-2026",https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/2M/NFG/0032M4AFN07.px,"psa_price_downloads\Fruits- Farmgate Prices by Commodity, by Region and Province, Monthly, 2010-2026.csv",113220,223,SUCCESS,
