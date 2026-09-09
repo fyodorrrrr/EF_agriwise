@@ -51,3 +51,15 @@ export function heatColor(
 export function heatGradientCss(palette: HeatPalette = "default"): string {
   return `linear-gradient(90deg, ${HEAT_PALETTES[palette].join(", ")})`;
 }
+
+const BUCKET_LABELS = ["Low", "Moderate", "High", "Very High"] as const;
+
+export interface HeatBucket {
+  color: string;
+  label: string;
+}
+
+/** The 4 discrete color+label buckets for a palette (low->high), for legend rendering. */
+export function heatBuckets(palette: HeatPalette = "default"): HeatBucket[] {
+  return HEAT_PALETTES[palette].map((color, i) => ({ color, label: BUCKET_LABELS[i] }));
+}
