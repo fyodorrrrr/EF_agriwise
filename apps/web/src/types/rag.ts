@@ -15,8 +15,6 @@ export interface Citation {
 export interface RagQueryRequest {
   question: string;
   history: ChatMessage[];
-  commodity?: string | null;
-  province?: string | null;
 }
 
 export interface ContactInfo {

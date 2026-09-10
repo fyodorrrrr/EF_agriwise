@@ -2,19 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { FloatingChat } from "./FloatingChat";
-import { AppPreferencesProvider } from "@/lib/preferences";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 
 vi.mock("@/lib/rag", () => ({ askAgriWise: vi.fn() }));
 import { askAgriWise } from "@/lib/rag";
 
-const renderFab = () =>
-  render(
-    <AppPreferencesProvider>
-      <FloatingChat />
-    </AppPreferencesProvider>,
-  );
+const renderFab = () => render(<FloatingChat />);
 
 afterEach(() => {
   cleanup();

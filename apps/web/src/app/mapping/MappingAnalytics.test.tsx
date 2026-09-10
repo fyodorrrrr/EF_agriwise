@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { MappingAnalytics } from "@/app/mapping/MappingAnalytics";
-import { AppPreferencesProvider } from "@/lib/preferences";
 import type { MunicipalOutlookResponse, OutlookResponse } from "@/types/forecast";
 
 vi.mock("@/lib/forecast", () => ({ getMunicipalOutlook: vi.fn(), getOutlook: vi.fn() }));
@@ -91,11 +90,7 @@ describe("MappingAnalytics", () => {
       Promise.resolve(outlook(p, p === "Laguna") as never),
     );
 
-    render(
-      <AppPreferencesProvider>
-        <MappingAnalytics />
-      </AppPreferencesProvider>,
-    );
+    render(<MappingAnalytics />);
 
     // demand layer: every province has a value
     await waitFor(() => expect(screen.getByText("Batangas")).toBeInTheDocument());
@@ -120,11 +115,7 @@ describe("MappingAnalytics", () => {
       Promise.resolve(municipalOutlook(province ?? "Laguna") as never),
     );
 
-    render(
-      <AppPreferencesProvider>
-        <MappingAnalytics />
-      </AppPreferencesProvider>,
-    );
+    render(<MappingAnalytics />);
 
     await screen.findByText("Batangas");
     fireEvent.click(screen.getByRole("button", { name: "Municipal" }));

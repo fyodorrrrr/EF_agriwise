@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { ForecastingClient } from "@/app/forecasting/ForecastingClient";
-import { AppPreferencesProvider, PREFERENCES_STORAGE_KEY } from "@/lib/preferences";
 import type { OutlookResponse } from "@/types/forecast";
 
 vi.mock("@/lib/forecast", () => ({ getOutlook: vi.fn(), getMethodology: vi.fn() }));
@@ -88,27 +87,25 @@ beforeEach(() => {
 });
 
 function renderForecasting() {
-  return render(
-    <AppPreferencesProvider>
-      <ForecastingClient />
-    </AppPreferencesProvider>,
-  );
+  return render(<ForecastingClient />);
+}
+
+function pick(commodity: string, province: string) {
+  fireEvent.change(screen.getByLabelText("Commodity"), { target: { value: commodity } });
+  fireEvent.change(screen.getByLabelText("Province"), { target: { value: province } });
 }
 
 describe("ForecastingClient", () => {
-  it("asks for a selection when preferences are empty", () => {
+  it("asks for a selection when nothing is chosen", () => {
     renderForecasting();
     expect(screen.getByText(/pick a commodity and province/i)).toBeInTheDocument();
   });
 
   it("renders demand/supply/price cards and the opportunity breakdown", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
     vi.mocked(getOutlook).mockResolvedValue(OUTLOOK as never);
 
     const { container } = renderForecasting();
+    pick("Rice", "Laguna");
 
     await waitFor(() =>
       expect(screen.getByText("Estimated Demand Proxy")).toBeInTheDocument(),
@@ -126,10 +123,6 @@ describe("ForecastingClient", () => {
   });
 
   it("lets the user pick a forecast horizon of 2, 3, or 4 quarters", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
     vi.mocked(getOutlook).mockResolvedValue({
       ...OUTLOOK,
       demand: {
@@ -144,6 +137,7 @@ describe("ForecastingClient", () => {
     } as never);
 
     renderForecasting();
+    pick("Rice", "Laguna");
 
     const fourQ = await screen.findByRole("button", { name: "Next 4 quarters" });
     const twoQ = screen.getByRole("button", { name: "Next 2 quarters" });
@@ -158,24 +152,17 @@ describe("ForecastingClient", () => {
   });
 
   it("disables horizon options beyond what the shortest available series supports", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
     // OUTLOOK's demand/supply/price forecasts each carry a single quarter.
     vi.mocked(getOutlook).mockResolvedValue(OUTLOOK as never);
 
     renderForecasting();
+    pick("Rice", "Laguna");
 
     const threeQ = await screen.findByRole("button", { name: "Next 3 quarters" });
     expect(threeQ).toBeDisabled();
   });
 
   it("shows the insufficient-data opportunity message honestly", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Red Onion", province: "Batangas" }),
-    );
     vi.mocked(getOutlook).mockResolvedValue({
       ...OUTLOOK,
       opportunity: {
@@ -189,6 +176,7 @@ describe("ForecastingClient", () => {
     } as never);
 
     renderForecasting();
+    pick("Red Onion", "Batangas");
 
     expect(
       await screen.findByText(/needs demand, supply, and price for every/i),

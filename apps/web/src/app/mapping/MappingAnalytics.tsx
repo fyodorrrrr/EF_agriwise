@@ -11,7 +11,6 @@ import { COMMODITIES, PROVINCES } from "@/lib/domain";
 import { getMunicipalOutlook, getOutlook } from "@/lib/forecast";
 import { heatColor, type HeatPalette } from "@/lib/gis/styles";
 import { listMarkets } from "@/lib/markets";
-import { usePreferences } from "@/lib/preferences";
 import type {
   Commodity,
   MunicipalOutlookResponse,
@@ -55,9 +54,7 @@ function metricFor(
 }
 
 export function MappingAnalytics() {
-  const { preferences, isHydrated } = usePreferences();
-  const [override, setOverride] = useState<Commodity | null>(null);
-  const commodity = override ?? preferences.commodity ?? "Rice";
+  const [commodity, setCommodity] = useState<Commodity>("Rice");
   const [layer, setLayer] = useState<Layer>("demand");
   const [geographicView, setGeographicView] = useState<GeographicView>("province");
   const [result, setResult] = useState<{
@@ -121,8 +118,6 @@ export function MappingAnalytics() {
       cancelled = true;
     };
   }, [commodity, geographicView]);
-
-  if (!isHydrated) return null;
 
   const outlooks = result?.commodity === commodity ? result.outlooks : null;
   const error = errorCommodity === commodity;
@@ -214,7 +209,7 @@ export function MappingAnalytics() {
               aria-label="Commodity"
               className="select"
               value={commodity}
-              onChange={(event) => setOverride(event.target.value as Commodity)}
+              onChange={(event) => setCommodity(event.target.value as Commodity)}
             >
               {COMMODITIES.map((item) => (
                 <option key={item} value={item}>

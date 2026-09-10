@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BrandLoader } from "@/components/BrandLoader";
 import { CommoditySelect } from "@/components/filters/CommoditySelect";
@@ -14,30 +14,29 @@ import { formatQuarter, verdictBadgeClass, verdictLabel } from "@/components/for
 import { classificationLabel, opportunityFactorLabel } from "@/components/forecast/glossary";
 import { COMMODITIES } from "@/lib/domain";
 import { getMethodology, getOutlook } from "@/lib/forecast";
-import { usePreferences } from "@/lib/preferences";
 import { toQuarterly } from "@/lib/quarterly";
-import type { Commodity, MethodologyResponse, OutlookResponse } from "@/types/forecast";
+import type {
+  Commodity,
+  MethodologyResponse,
+  OutlookResponse,
+  Province,
+} from "@/types/forecast";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
 const QUARTER_OPTIONS = [2, 3, 4] as const;
 
 export function ForecastingClient() {
-  const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
   const searchParams = useSearchParams();
 
-  // Seed the commodity from ?commodity= once, if preferences don't have one.
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (seeded.current) return;
-    seeded.current = true;
+  // Deep-link seed: the Dashboard "Details →" link carries ?commodity=. Read it
+  // once for the initial value; the page filter is otherwise fully local.
+  const [commodity, setCommodity] = useState<Commodity | null>(() => {
     const q = searchParams.get("commodity");
-    if (q && (COMMODITIES as readonly string[]).includes(q) && !preferences.commodity) {
-      setCommodity(q as Commodity);
-    }
-  }, [searchParams, preferences.commodity, setCommodity]);
+    return q && (COMMODITIES as readonly string[]).includes(q) ? (q as Commodity) : null;
+  });
+  const [province, setProvince] = useState<Province | null>(null);
 
-  const { commodity, province } = preferences;
   const key = commodity && province ? `${commodity}|${province}` : null;
   const [result, setResult] = useState<{ key: string; outlook: OutlookResponse } | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -74,8 +73,6 @@ export function ForecastingClient() {
       cancelled = true;
     };
   }, []);
-
-  if (!isHydrated) return null;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">

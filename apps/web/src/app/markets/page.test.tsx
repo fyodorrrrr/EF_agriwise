@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { MarketsClient } from "@/app/markets/MarketsClient";
-import { AppPreferencesProvider, PREFERENCES_STORAGE_KEY } from "@/lib/preferences";
 import type { MarketRankingResponse } from "@/types/markets";
 
 vi.mock("@/lib/markets", () => ({ rankMarkets: vi.fn() }));
@@ -46,11 +45,12 @@ afterEach(() => {
 });
 
 function renderMarkets() {
-  return render(
-    <AppPreferencesProvider>
-      <MarketsClient />
-    </AppPreferencesProvider>,
-  );
+  return render(<MarketsClient />);
+}
+
+function pick(commodity: string, province: string) {
+  fireEvent.change(screen.getByLabelText("Commodity"), { target: { value: commodity } });
+  fireEvent.change(screen.getByLabelText("Province"), { target: { value: province } });
 }
 
 describe("MarketsClient", () => {
@@ -60,13 +60,10 @@ describe("MarketsClient", () => {
   });
 
   it("renders ranked markets with the why-recommended breakdown and policy caveats", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
     vi.mocked(rankMarkets).mockResolvedValue(RANKING as never);
 
     renderMarkets();
+    pick("Rice", "Laguna");
 
     await waitFor(() =>
       expect(screen.getByText("Biñan Public Market")).toBeInTheDocument(),
@@ -85,10 +82,6 @@ describe("MarketsClient", () => {
   });
 
   it("shows an empty state when a province has no mapped markets", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Rizal" }),
-    );
     vi.mocked(rankMarkets).mockResolvedValue({
       ...RANKING,
       province: "Rizal",
@@ -96,6 +89,7 @@ describe("MarketsClient", () => {
     } as never);
 
     renderMarkets();
+    pick("Rice", "Rizal");
 
     expect(await screen.findByText(/no curated market with verified coordinates/i)).toBeInTheDocument();
   });
