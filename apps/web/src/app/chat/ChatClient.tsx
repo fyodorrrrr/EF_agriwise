@@ -2,9 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { CommoditySelect } from "@/components/filters/CommoditySelect";
-import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
-import { usePreferences } from "@/lib/preferences";
 import { askAgriWise } from "@/lib/rag";
 import type { Citation, ContactInfo } from "@/types/rag";
 
@@ -67,7 +64,6 @@ const BotAvatar = () => (
 
 export default function ChatClient({ variant = "page" }: { variant?: "page" | "panel" }) {
   const isPanel = variant === "panel";
-  const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
   const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -90,7 +86,6 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
       const res = await askAgriWise(
         question,
         history.map((m) => ({ role: m.role, content: m.content })),
-        { commodity: preferences.commodity, province: preferences.province },
       );
       setMessages((prev) => [
         ...prev,
@@ -127,25 +122,6 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
     void send(lastUser.content, history);
   }
 
-  const scopeControls = (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <CommoditySelect value={preferences.commodity} onChange={setCommodity} />
-      <ProvinceSelect value={preferences.province} onChange={setProvince} />
-      {(preferences.commodity || preferences.province) && (
-        <button
-          type="button"
-          className="action"
-          onClick={() => {
-            setCommodity(null);
-            setProvince(null);
-          }}
-        >
-          Clear
-        </button>
-      )}
-    </div>
-  );
-
   const examplePrompts = isPanel ? (
     <div className="chat-suggests">
       {EXAMPLES.map((ex) => (
@@ -181,31 +157,6 @@ export default function ChatClient({ variant = "page" }: { variant?: "page" | "p
             : "flex flex-col gap-4"
         }
       >
-        {isHydrated &&
-          (isPanel ? (
-            <details className="disclosure">
-              <summary>Scope answers to a commodity / province</summary>
-              <div className="disclosure-body">{scopeControls}</div>
-            </details>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-muted">
-                Optional — narrow answers to one commodity and province. Chat works fine without it.
-              </p>
-              {scopeControls}
-            </div>
-          ))}
-
-        {isHydrated && preferences.commodity && preferences.province && (
-          <p className="text-xs text-muted">
-            Answers can reference your current analytics selection:{" "}
-            <span className="font-medium">
-              {preferences.commodity} · {preferences.province}
-            </span>
-            .
-          </p>
-        )}
-
         {messages.length === 0 &&
           (isPanel ? (
             <div className="flex items-start gap-2 self-start">

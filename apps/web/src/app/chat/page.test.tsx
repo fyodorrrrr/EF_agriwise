@@ -2,17 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import ChatPage from "@/app/chat/page";
-import { AppPreferencesProvider, PREFERENCES_STORAGE_KEY } from "@/lib/preferences";
 
 vi.mock("@/lib/rag", () => ({ askAgriWise: vi.fn() }));
 import { askAgriWise } from "@/lib/rag";
 
-const renderChat = () =>
-  render(
-    <AppPreferencesProvider>
-      <ChatPage />
-    </AppPreferencesProvider>,
-  );
+const renderChat = () => render(<ChatPage />);
 
 afterEach(() => {
   cleanup();
@@ -59,11 +53,7 @@ describe("ChatPage", () => {
     expect(await screen.findByText("recovered")).toBeInTheDocument();
   });
 
-  it("passes the saved commodity/province selection and notes when it was used", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
+  it("notes when the answer used the analytics, and sends no filter", async () => {
     vi.mocked(askAgriWise).mockResolvedValue({
       answer: "Rice demand is up.",
       citations: [],
@@ -71,13 +61,11 @@ describe("ChatPage", () => {
       analytics_scope: "Rice · Laguna",
     });
     renderChat();
-    ask("how is rice demand?");
+    ask("how is rice demand in Laguna?");
 
     await screen.findByText("Rice demand is up.");
-    expect(vi.mocked(askAgriWise).mock.calls[0][2]).toEqual({
-      commodity: "Rice",
-      province: "Laguna",
-    });
+    // The chat has no scope filter now — only question + history are sent.
+    expect(vi.mocked(askAgriWise).mock.calls[0]).toHaveLength(2);
     expect(
       screen.getByText(/answer used agriwise analytics — rice · laguna/i),
     ).toBeInTheDocument();

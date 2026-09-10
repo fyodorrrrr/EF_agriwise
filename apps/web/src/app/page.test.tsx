@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import Home from "@/app/page";
-import { AppPreferencesProvider, PREFERENCES_STORAGE_KEY } from "@/lib/preferences";
 import type { OutlookResponse } from "@/types/forecast";
 
 vi.mock("@/lib/forecast", () => ({ getOutlook: vi.fn() }));
@@ -80,11 +79,11 @@ afterEach(() => {
 });
 
 function renderDashboard() {
-  return render(
-    <AppPreferencesProvider>
-      <Home />
-    </AppPreferencesProvider>,
-  );
+  return render(<Home />);
+}
+
+function pickProvince(name: string) {
+  fireEvent.change(screen.getByLabelText("Province"), { target: { value: name } });
 }
 
 describe("Dashboard", () => {
@@ -93,14 +92,11 @@ describe("Dashboard", () => {
     expect(screen.getByText(/choose a province/i)).toBeInTheDocument();
   });
 
-  it("renders an outlook card per commodity for the saved province", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
+  it("renders an outlook card per commodity for the chosen province", async () => {
     vi.mocked(getOutlook).mockImplementation((c) => Promise.resolve(outlook(c) as never));
 
     const { container } = renderDashboard();
+    pickProvince("Laguna");
 
     await waitFor(() => expect(screen.getAllByText("Rice").length).toBeGreaterThan(0));
     expect(screen.getAllByText("Tomato").length).toBeGreaterThan(0);
@@ -138,13 +134,10 @@ describe("Dashboard", () => {
   });
 
   it("shows an error state and no stale rows when the service fails", async () => {
-    localStorage.setItem(
-      PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ commodity: "Rice", province: "Laguna" }),
-    );
     vi.mocked(getOutlook).mockRejectedValue(new Error("boom"));
 
     renderDashboard();
+    pickProvince("Laguna");
 
     expect(await screen.findByText(/couldn.t reach the forecast service/i)).toBeInTheDocument();
     expect(screen.queryByText("Tomato")).toBeNull();

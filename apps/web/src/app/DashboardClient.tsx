@@ -8,8 +8,7 @@ import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { COMMODITIES } from "@/lib/domain";
 import { getOutlook } from "@/lib/forecast";
 import { toQuarterly } from "@/lib/quarterly";
-import { usePreferences } from "@/lib/preferences";
-import type { Commodity, OutlookResponse } from "@/types/forecast";
+import type { Commodity, OutlookResponse, Province } from "@/types/forecast";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { QuarterlyForecastChart } from "@/components/forecast/QuarterlyForecastChart";
 import { OpportunityRankBar } from "@/components/forecast/OpportunityRankBar";
@@ -77,8 +76,7 @@ function computeKpis(rows: Row[]) {
 }
 
 export function DashboardClient() {
-  const { preferences, isHydrated, setProvince } = usePreferences();
-  const province = preferences.province;
+  const [province, setProvince] = useState<Province | null>(null);
 
   const [result, setResult] = useState<{ province: string; rows: Row[] } | null>(null);
   const [errorProvince, setErrorProvince] = useState<string | null>(null);
@@ -109,8 +107,6 @@ export function DashboardClient() {
         ? "ready"
         : "loading";
   const rows = result?.province === province ? result.rows : [];
-
-  if (!isHydrated) return null;
 
   return (
     <div className="page-container-wide flex flex-col gap-4">

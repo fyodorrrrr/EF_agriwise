@@ -8,7 +8,7 @@ import { CommoditySelect } from "@/components/filters/CommoditySelect";
 import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { marketFactorLabel } from "@/components/forecast/glossary";
 import { rankMarkets } from "@/lib/markets";
-import { usePreferences } from "@/lib/preferences";
+import type { Commodity, Province } from "@/types/forecast";
 import type { MarketRankingResponse, RankedMarket } from "@/types/markets";
 
 type Status = "idle" | "loading" | "ready" | "error";
@@ -21,8 +21,8 @@ const CONFIDENCE_BADGE: Record<string, string> = {
 };
 
 export function MarketsClient() {
-  const { preferences, isHydrated, setCommodity, setProvince } = usePreferences();
-  const { commodity, province } = preferences;
+  const [commodity, setCommodity] = useState<Commodity | null>(null);
+  const [province, setProvince] = useState<Province | null>(null);
   const key = commodity && province ? `${commodity}|${province}` : null;
 
   const [result, setResult] = useState<{ key: string; data: MarketRankingResponse } | null>(null);
@@ -47,8 +47,6 @@ export function MarketsClient() {
         ? "ready"
         : "loading";
   const data = result?.key === key ? result.data : null;
-
-  if (!isHydrated) return null;
 
   return (
     <div className="page-container flex flex-col gap-4">
