@@ -6,8 +6,8 @@ import { ProvinceSelect } from "@/components/filters/ProvinceSelect";
 import { classificationLabel } from "@/components/forecast/glossary";
 import { formatValue, verdictBadgeClass, verdictLabel } from "@/components/forecast/verdict";
 import { getAdvisories } from "@/lib/advisory";
-import { usePreferences } from "@/lib/preferences";
 import type { AdvisoryRecord, AdvisoryResponse } from "@/types/advisory";
+import type { Province } from "@/types/forecast";
 
 const TYPE_LABEL: Record<string, string> = {
   OPPORTUNITY: "Potential opportunity",
@@ -105,8 +105,7 @@ function AdvisorySkeleton() {
 }
 
 export function AdvisoryClient() {
-  const { preferences, isHydrated, setProvince } = usePreferences();
-  const province = preferences.province;
+  const [province, setProvince] = useState<Province | null>(null);
   const [result, setResult] = useState<{ province: string; data: AdvisoryResponse } | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -117,7 +116,6 @@ export function AdvisoryClient() {
     return () => { cancelled = true; };
   }, [province]);
 
-  if (!isHydrated) return null;
   const data = result?.province === province ? result.data : null;
   const top = data?.advisories.slice(0, 3) ?? [];
   return (
